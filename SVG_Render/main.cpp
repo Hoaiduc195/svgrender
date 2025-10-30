@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <gdiplus.h>
+#include "tinyxml2.h"
 using namespace Gdiplus;
 
 #pragma comment (lib, "Gdiplus.lib")
