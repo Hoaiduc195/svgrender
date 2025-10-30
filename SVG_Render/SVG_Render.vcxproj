@@ -127,15 +127,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\master\include\tinyxml2.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SVG_Render.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="tinyxml2.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\master\src\tinyxml2.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="tinyxml2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SVG_Render.rc" />
@@ -143,6 +143,9 @@
   <ItemGroup>
     <Image Include="small.ico" />
     <Image Include="SVG_Render.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="..\..\..\master\assets\svg_samples\sample.xml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
