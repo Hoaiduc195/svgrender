@@ -8,3 +8,8 @@ class ABC {
 
 	// Create in 31.12.2023
 };
+
+
+int ssumm(int a, int b) {
+	return a + b;
+}
