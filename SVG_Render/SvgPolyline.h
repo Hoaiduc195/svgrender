@@ -12,5 +12,5 @@ private:
 public:
 	SvgPolyline();
 	~SvgPolyline();
-	void draw();
+	void draw() override;
 };
