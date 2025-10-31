@@ -7,11 +7,14 @@ using namespace Gdiplus;
 class SvgElement {
     private:
         string id;
-        float opacity;
         Color fill;
         Color stroke;
+        float strokeWidth;
+        float strokeOpacity;
+        float fillOpacity;
     public:
-    void 
+        virtual void draw(Graphics& graphics) = 0; 
+        virtual ~SvgElement() = default;
         SvgElement() {
             cout << "SvgElement created." << endl;
         }
