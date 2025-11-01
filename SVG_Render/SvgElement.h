@@ -11,13 +11,12 @@ class SvgElement {
         Color fill;
         Color stroke;
     public:
-    void 
         SvgElement() {
-            cout << "SvgElement created." << endl;
+            //cout << "SvgElement created." << endl;
         }
         
         void render() {
-            cout << "Rendering SVG Element." << endl;
+            //cout << "Rendering SVG Element." << endl;
         }
 
 
