@@ -20,6 +20,6 @@ public:
 	SvgPolyline(const SvgPolyline& other);
 	SvgPolyline(vector<Vector2> pts, bool closed);
 	~SvgPolyline();
-	void draw(Graphics& g);
+	void draw(Graphics& g) override;
 
 };

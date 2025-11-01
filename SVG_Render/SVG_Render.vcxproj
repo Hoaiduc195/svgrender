@@ -139,6 +139,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="SvgPolygon.cpp" />
     <ClCompile Include="SvgPolyline.cpp" />
     <ClCompile Include="tinyxml2.cpp" />
   </ItemGroup>

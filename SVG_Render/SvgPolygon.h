@@ -19,5 +19,5 @@ public:
 	SvgPolygon(const SvgPolygon& other);
 	SvgPolygon(vector<Vector2> pts, bool closed);
 	~SvgPolygon();
-	void draw(Graphics& g);
+	void draw(Graphics& g) override;
 };

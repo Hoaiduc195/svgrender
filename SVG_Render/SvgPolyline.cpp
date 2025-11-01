@@ -2,6 +2,7 @@
 #include <iostream>
 #include <gdiplus.h>
 #include <gdipluscolor.h>
+#pragma comment(lib, "gdiplus.lib")
 using namespace std;
 using namespace Gdiplus;
 
@@ -35,10 +36,10 @@ void SvgPolyline::draw(Graphics& g) {
 	for (const auto& v : points) {
 		gdiPoints.emplace_back(v.x, v.y);
 	}
-	
-	Pen pen(Color(255, 0, 0, 255), 2);
 
-	for (int i = 0; i < gdiPoints.size() - 1; ++i) {
+	Pen pen(Color::MakeARGB(255, 0, 0, 255), 2.0f);
+
+	for (size_t i = 0; i < gdiPoints.size() - 1; ++i) {
 		PointF p1 = gdiPoints[i];
 		PointF p2 = gdiPoints[i + 1];
 		g.DrawLine(&pen, p1, p2);
@@ -49,6 +50,4 @@ void SvgPolyline::draw(Graphics& g) {
 		PointF last = gdiPoints.back();
 		g.DrawLine(&pen, first, last);
 	}
-
-	delete& pen;	
 }
