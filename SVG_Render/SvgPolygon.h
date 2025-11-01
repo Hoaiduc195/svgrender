@@ -1,7 +1,6 @@
 #pragma once
-#include "SvgElement.h"
-#include <vector>
-
+#include"SvgElement.h"
+#include<vector>
 using namespace std;
 
 struct Vector2 {
@@ -11,15 +10,14 @@ struct Vector2 {
 	Vector2(float _x, float _y) : x(_x), y(_y) {}
 };
 
-class SvgPolyline : public SvgElement {
+class SvgPolygon : public SvgElement {
 private:
 	vector<Vector2> points;
 	bool isClosed;
 public:
-	SvgPolyline();
-	SvgPolyline(const SvgPolyline& other);
-	SvgPolyline(vector<Vector2> pts, bool closed);
-	~SvgPolyline();
+	SvgPolygon();
+	SvgPolygon(const SvgPolygon& other);
+	SvgPolygon(vector<Vector2> pts, bool closed);
+	~SvgPolygon();
 	void draw(Graphics& g);
-
 };

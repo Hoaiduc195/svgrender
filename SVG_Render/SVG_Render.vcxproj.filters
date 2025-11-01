@@ -36,6 +36,15 @@
     <ClInclude Include="SvgPolyline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SvgPolygon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SvgElement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SvgEllipse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

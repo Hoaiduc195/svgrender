@@ -771,7 +771,7 @@ public:
         return _firstChild;
     }
 
-    XMLNode*		FirstChild()			{
+    XMLNode* FirstChild()			{
         return _firstChild;
     }
 
