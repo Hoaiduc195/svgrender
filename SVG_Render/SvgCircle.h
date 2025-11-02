@@ -1,6 +1,6 @@
 #include<iostream>
-#include <gdiplus.h>
 #include "SvgElement.h"
+#include <gdiplus.h>
 using namespace std;
 using namespace Gdiplus;
 
