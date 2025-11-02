@@ -1,8 +1,9 @@
 #pragma once
 #include "SvgElement.h"
 #include <vector>
-
+#include <gdiplus.h>
 using namespace std;
+using namespace Gdiplus;
 
 struct Vector2 {
 	float x;
