@@ -21,5 +21,5 @@ public:
 	~SvgPolygon();
 	void draw(Graphics& g) override;
 	// dtdnnta
-
 };
+
