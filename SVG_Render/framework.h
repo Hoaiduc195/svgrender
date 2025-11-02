@@ -16,6 +16,9 @@
 	#include <gdiplus.h>
 	#include <iostream>
 	#include <string>
+	#include <fstream>
+	#include <sstream>
+	#include <vector>
 	using namespace Gdiplus;
 	using namespace std;
 	#pragma comment (lib, "Gdiplus.lib")
