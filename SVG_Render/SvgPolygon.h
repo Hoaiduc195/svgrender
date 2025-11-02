@@ -20,4 +20,5 @@ public:
 	SvgPolygon(vector<Vector2> pts, bool closed);
 	~SvgPolygon();
 	void draw(Graphics& g) override;
+
 };
