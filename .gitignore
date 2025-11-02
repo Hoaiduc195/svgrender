@@ -364,5 +364,6 @@ FodyWeavers.xsd
 
 
 # Visual Studio generated project/solution files
+*.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
