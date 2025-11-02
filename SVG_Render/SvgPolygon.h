@@ -1,7 +1,7 @@
 #pragma once
 #include"SvgElement.h"
 #include<vector>
-using namespace std;
+#include "framework.h"
 
 struct Vector2 {
 	float x;

@@ -1,9 +1,7 @@
 #pragma once
 #include "SvgElement.h"
 #include <vector>
-#include <gdiplus.h>
-using namespace std;
-using namespace Gdiplus;
+#include "framework.h"
 
 struct Vector2 {
 	float x;
@@ -22,5 +20,4 @@ public:
 	SvgPolyline(vector<Vector2> pts, bool closed);
 	~SvgPolyline();
 	void draw(Graphics& g) override;
-
 };

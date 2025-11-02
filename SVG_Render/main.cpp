@@ -1,6 +1,8 @@
 #include <windows.h>
-#include <gdiplus.h>
+#include "framework.h"
 using namespace Gdiplus;
+
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     GdiplusStartupInput gdiplusStartupInput;

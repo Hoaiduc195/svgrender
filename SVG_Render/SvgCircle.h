@@ -1,7 +1,6 @@
-#include<iostream>
+#pragma once
 #include "SvgElement.h"
-#include <gdiplus.h>
-using namespace std;
+#include "framework.h"
 using namespace Gdiplus;
 
 class SvgCircle : public SvgElement {
@@ -11,5 +10,5 @@ class SvgCircle : public SvgElement {
         float r;
     public:
         SvgCircle(float centerX, float centerY, float radius);
-        void draw(Gdiplus::Graphics& graphics) override;
+        void draw(Graphics& graphics) override;
 };

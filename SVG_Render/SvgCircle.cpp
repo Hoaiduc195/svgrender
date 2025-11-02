@@ -1,6 +1,8 @@
+#pragma once
 #include<iostream>
 #include "SvgElement.h"
 #include "SvgCircle.h"
+#include "framework.h"
 using namespace std;
 using namespace Gdiplus;
 
@@ -9,9 +11,9 @@ SvgCircle::SvgCircle(float centerX, float centerY, float radius) : cx(centerX), 
     cout << "SvgCircle created." << endl;
 }
 
-void SvgCircle::draw(Gdiplus::Graphics& graphics){
-    Pen pen(Gdiplus::Color(255, 0, 0, 0)); 
-    SolidBrush brush(Gdiplus::Color(255, 255, 0, 0)); 
+void SvgCircle::draw(Graphics& graphics){
+    Pen pen(Color(255, 0, 0, 0)); 
+    SolidBrush brush(Color(255, 255, 0, 0)); 
     graphics.FillEllipse(&brush, cx - r, cy - r, r * 2, r * 2);
     graphics.DrawEllipse(&pen, cx - r, cy - r, r * 2, r * 2);
 }

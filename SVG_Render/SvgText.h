@@ -2,8 +2,7 @@
 #include"SvgElement.h"
 #include<vector>
 #include<string>
-#include<gdiplus.h>
-using namespace std;
+#include "framework.h"
 using namespace Gdiplus;
 
 class SvgText : public SvgElement {

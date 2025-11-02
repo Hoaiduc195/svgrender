@@ -1,7 +1,7 @@
+#pragma once
 #include<iostream>
-#include <gdiplus.h>
+#include "framework.h"
 
-using namespace std;
 using namespace Gdiplus;
 
 class SvgElement {
@@ -13,7 +13,7 @@ class SvgElement {
         float strokeOpacity;
         float fillOpacity;
     public:
-        virtual void draw(Gdiplus::Graphics& graphics) = 0;
+        virtual void draw(Graphics& graphics) = 0;
         virtual ~SvgElement() = default;
         SvgElement() {
             //cout << "SvgElement created." << endl;
@@ -22,6 +22,4 @@ class SvgElement {
         void render() {
             //cout << "Rendering SVG Element." << endl;
         }
-		virtual void draw(Gdiplus::Graphics& graphics) = 0;
-
 };

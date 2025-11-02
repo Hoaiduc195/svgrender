@@ -1,9 +1,9 @@
+#pragma
 #include<iostream>
-#include <gdiplus.h>
 #include "SvgElement.h"
 #include "tinyxml2.h"
+#include "framework.h"
 
-using namespace std;
 using namespace Gdiplus;
 
 class SvgEllipse : public SvgElement {
@@ -14,5 +14,5 @@ class SvgEllipse : public SvgElement {
         float ry;
     public:
         SvgEllipse(float cx, float cy, float rx, float ry);
-        void draw(Gdiplus::Graphics& graphics) override;
+        void draw(Graphics& graphics) override;
 };

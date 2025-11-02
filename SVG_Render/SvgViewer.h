@@ -1,9 +1,6 @@
 #pragma once
 #include <memory>
-#include <string>
-#include <gdiplus.h>
-//#include "SvgDocument.h"
-using namespace std;
+#include "framework.h"
 using namespace Gdiplus;
 
 class SvgViewer {
