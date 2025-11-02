@@ -5,6 +5,7 @@
 #include <windows.h>     
 
 
+
 SvgViewer::SvgViewer() {
     screenHeight = 480;
     screenWidth = 640;
