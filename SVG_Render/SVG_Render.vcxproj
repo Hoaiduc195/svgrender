@@ -142,7 +142,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="SvgCircle.cpp" />
+    <ClCompile Include="SvgEllipse.cpp" />
+    <ClCompile Include="SvgLine.cpp" />
     <ClCompile Include="SvgPolyline.cpp" />
+    <ClCompile Include="SvgRect.cpp" />
     <ClCompile Include="SvgViewer.cpp" />
     <ClCompile Include="tinyxml2.cpp" />
   </ItemGroup>
