@@ -29,29 +29,50 @@ void Parser::ParseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float y = element->FloatAttribute("y", 0);
         float w = element->FloatAttribute("width", 0);
         float h = element->FloatAttribute("height", 0);
+        float rx = element->FloatAttribute("rx", 0);
+        float ry = element->FloatAttribute("ry", 0);
         string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
         Color fill = parseColor(fillStr);
 
-        doc.addElement(make_unique<SvgRect>(x, y, w, h, fill));
+        //chua co stroke: do day
+        doc.addElement(make_unique<SvgRect>(x, y, w, h, rx, ry, fill));
     }
     else if (tag == "circle") {
         float cx = element->FloatAttribute("cx", 0);
         float cy = element->FloatAttribute("cy", 0);
         float r = element->FloatAttribute("r", 0);
-        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
-        Color fill = parseColor(fillStr);
+        /*string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);*/
 
-        doc.addElement(make_unique<SvgCircle>(cx, cy, r, fill));
+        doc.addElement(make_unique<SvgCircle>(cx, cy, r));
     }
+    else if (tag == "line") {
+        float x1 = element->FloatAttribute("x1", 0);
+        float y1 = element->FloatAttribute("y1", 0);
+        float x2 = element->FloatAttribute("x2", 0);
+        float y2 = element->FloatAttribute("y2", 0);
+       /* string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);*/
+
+        doc.addElement(make_unique<SvgCircle>(x1, x2, y1, y2));
+    }
+    else if (tag == "ellipse") {
+        float cx = element->FloatAttribute("cx", 0);
+        float cy = element->FloatAttribute("cy", 0);
+        float rx = element->FloatAttribute("rx", 0);
+        float ry = element->FloatAttribute("ry", 0);
+        /* string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+         Color fill = parseColor(fillStr);*/
+
+        doc.addElement(make_unique<SvgCircle>(cx, cy, rx, ry));
+    }
+    //thieu polygon,polyline
     else if (tag == "svg") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
             ParseElement(child, doc);
             child = child->NextSiblingElement();
         }
-    }
-    else {
-       //the line, path...
     }
 }
 

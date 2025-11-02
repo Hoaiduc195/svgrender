@@ -8,7 +8,7 @@ using namespace std;
 using namespace Gdiplus;
 
 
-SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry) : x(x), y(y), width(width), height(height), rx(rx), ry(ry) {
+SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry, const Color& fill) : x(x), y(y), width(width), height(height), rx(rx), ry(ry), fillColor(fill) {
     cout << "SvgRect created." << endl;
 }
 
