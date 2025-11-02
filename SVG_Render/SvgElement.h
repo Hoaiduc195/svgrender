@@ -1,5 +1,5 @@
 #include<iostream>
-#include <gdiplus.h>
+#include<gdiplus.h>
 
 using namespace std;
 using namespace Gdiplus;
