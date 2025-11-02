@@ -20,6 +20,6 @@ class SvgElement {
         void render() {
             //cout << "Rendering SVG Element." << endl;
         }
-
+		virtual void draw(Gdiplus::Graphics& graphics) = 0;
 
 };
