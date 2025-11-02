@@ -129,20 +129,14 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="SvgElement.h" />
-    <ClInclude Include="SvgEllipse.h" />
-    <ClInclude Include="SvgPolygon.h" />
     <ClInclude Include="SvgPolyline.h" />
-    <ClInclude Include="SvgText.h" />
     <ClInclude Include="SVG_Render.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="tinyxml2.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="SvgPolygon.cpp" />
     <ClCompile Include="SvgPolyline.cpp" />
-    <ClCompile Include="SvgText.cpp" />
     <ClCompile Include="tinyxml2.cpp" />
   </ItemGroup>
   <ItemGroup>

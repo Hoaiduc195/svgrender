@@ -13,15 +13,15 @@ class SvgElement {
         float strokeOpacity;
         float fillOpacity;
     public:
-        virtual void draw(Graphics& graphics) = 0; 
+        virtual void draw(Gdiplus::Graphics& graphics) = 0;
         virtual ~SvgElement() = default;
         SvgElement() {
-            cout << "SvgElement created." << endl;
+            //cout << "SvgElement created." << endl;
         }
         
         void render() {
-            cout << "Rendering SVG Element." << endl;
+            //cout << "Rendering SVG Element." << endl;
         }
-
+		virtual void draw(Gdiplus::Graphics& graphics) = 0;
 
 };
