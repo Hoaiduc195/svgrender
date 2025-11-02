@@ -1,12 +1,12 @@
 #include "SvgDocument.h"
 
-void SvgDocument::addChild(unique_ptr<SvgElement> child)
+void SvgDocument::addElement(unique_ptr<SvgElement> element)
 {
-    children.push_back(move(child));
+    elements.push_back(move(element));
 }
 
 void SvgDocument::draw(Graphics& graphic) {
-    for (auto& child : children) {
-        child->draw(graphic);
+    for (auto& element : elements) {
+        element->draw(graphic);
     }
 }

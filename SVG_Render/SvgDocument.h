@@ -4,9 +4,9 @@
 
 class SvgDocument : public SvgElement {
 private:
-    vector<unique_ptr<SvgElement>> children;
+    vector<unique_ptr<SvgElement>> elements;
 public:
     SvgDocument() = default;
-    void addChild(unique_ptr<SvgElement>);
+    void addElement(unique_ptr<SvgElement>);
     void draw(Graphics& graphics) override;
 };

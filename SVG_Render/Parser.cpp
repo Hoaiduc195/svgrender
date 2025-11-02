@@ -1,54 +1,75 @@
 #include "Parser.h"
 
+Color Parser::parseColor(const string& value) {
+    if (value.empty()) return Color::Black;
+
+    if (value[0] == '#') {
+        unsigned int r, g, b;
+        if (sscanf(value.c_str() + 1, "%02x%02x%02x", &r, &g, &b) == 3)
+            return Color(255, r, g, b);
+    }
+
+    if (value == "red") return Color::Red;
+    if (value == "blue") return Color::Blue;
+    if (value == "green") return Color::Green;
+    if (value == "black") return Color::Black;
+    if (value == "yellow") return Color::Yellow;
+    if (value == "white") return Color::White;
+
+    return Color::Black;
+}
+
+void Parser::ParseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
+    if (!element) return;
+
+    string tag = element->Name();
+
+    if (tag == "rect") {
+        float x = element->FloatAttribute("x", 0);
+        float y = element->FloatAttribute("y", 0);
+        float w = element->FloatAttribute("width", 0);
+        float h = element->FloatAttribute("height", 0);
+        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);
+
+        doc.addElement(make_unique<SvgRect>(x, y, w, h, fill));
+    }
+    else if (tag == "circle") {
+        float cx = element->FloatAttribute("cx", 0);
+        float cy = element->FloatAttribute("cy", 0);
+        float r = element->FloatAttribute("r", 0);
+        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);
+
+        doc.addElement(make_unique<SvgCircle>(cx, cy, r, fill));
+    }
+    else if (tag == "svg") {
+        tinyxml2::XMLElement* child = element->FirstChildElement();
+        while (child) {
+            ParseElement(child, doc);
+            child = child->NextSiblingElement();
+        }
+    }
+    else {
+       //the line, path...
+    }
+}
+
 unique_ptr<SvgDocument> Parser::parseSVG(const string& xmlText) {
+    auto svgDoc = make_unique<SvgDocument>();
+
     tinyxml2::XMLDocument doc;
-    doc.Parse(xmlText.c_str());
-
-    auto svg = make_unique<SvgDocument>();
-    tinyxml2::XMLElement* root = doc.FirstChildElement("svg");
-    if (!root) return svg;
-
-    for (tinyxml2::XMLElement* elem = root->FirstChildElement(); elem; elem = elem->NextSiblingElement()) {
-        string name = elem->Name();
-
-        if (name == "rect") {
-            float x = elem->FloatAttribute("x");
-            float y = elem->FloatAttribute("y");
-            float w = elem->FloatAttribute("width");
-            float h = elem->FloatAttribute("height");
-            const char* fill = elem->Attribute("fill");
-
-            Color color;
-            if (fill && fill[0] == '#') {
-                unsigned int rgb = stoul(fill + 1, nullptr, 16);
-                BYTE r = (rgb >> 16) & 0xFF;
-                BYTE g = (rgb >> 8) & 0xFF;
-                BYTE b = rgb & 0xFF;
-                ARGB argb = Color::MakeARGB(255, r, g, b);
-                color = Color(argb);
-            }
-
-            svg->addChild(make_unique<SvgRect>(x, y, w, h, color));
-        }
-        else if (name == "circle") {
-            float cx = elem->FloatAttribute("cx");
-            float cy = elem->FloatAttribute("cy");
-            float r = elem->FloatAttribute("r");
-            const char* fill = elem->Attribute("fill");
-
-            Color color;
-            if (fill && fill[0] == '#') {
-                unsigned int rgb = stoul(fill + 1, nullptr, 16);
-                BYTE r = (rgb >> 16) & 0xFF;
-                BYTE g = (rgb >> 8) & 0xFF;
-                BYTE b = rgb & 0xFF;
-                ARGB argb = Color::MakeARGB(255, r, g, b);
-                color = Color(argb);
-            }
-
-            svg->addChild(make_unique<SvgCircle>(cx, cy, r, color));
-        }
+    if (doc.Parse(xmlText.c_str()) != tinyxml2::XML_SUCCESS) {
+        cerr << "Parse error!\n";
+        return nullptr;
     }
 
-    return svg;
+    tinyxml2::XMLElement* root = doc.RootElement();
+    if (!root || string(root->Name()) != "svg") {
+        cerr << "Not a valid SVG file.\n";
+        return nullptr;
     }
+
+    ParseElement(root, *svgDoc);
+    return svgDoc;
+}
