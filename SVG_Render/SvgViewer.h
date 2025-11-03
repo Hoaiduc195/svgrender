@@ -1,11 +1,12 @@
 #pragma once
-#include <memory>
 #include "framework.h"
-using namespace Gdiplus;
+#include "SvgDocument.h"
+#include "Parser.h"
+#include "FileReader.h"
 
 class SvgViewer {
 private:
-	//unique_ptr<SvgDocument> document;
+	unique_ptr<SvgDocument> document;
 	int screenHeight;
 	int screenWidth;
 

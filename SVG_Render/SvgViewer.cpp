@@ -1,8 +1,4 @@
 ﻿#include "SvgViewer.h"
-#include "SvgDocument.h" 
-#include "Parser.h"    
-#include "FileReader.h" 
-#include <windows.h>     
 
 
 SvgViewer::SvgViewer() {
@@ -17,7 +13,7 @@ SvgViewer::~SvgViewer() {
 void SvgViewer::loadSvg(const string& filePath) {
     string svgContent = FileReader::ReadFileToString(filePath);
     Parser parser;
-    document = parser.parseXMLDocument(svgContent);
+    document = parser.parseSVG(svgContent);
 }
 
 void SvgViewer::render(Graphics* graphics) {
