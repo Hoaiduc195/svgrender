@@ -158,10 +158,10 @@ void SvgViewer::render(Graphics& graphics)
 {
     graphics.Clear(Color(255, 255, 255, 255));
 
-    float centerX = screenWidth / 2.0f;
-    float centerY = screenHeight / 2.0f;
+    //float centerX = screenWidth / 2.0f;
+    //float centerY = screenHeight / 2.0f;
 
-    graphics.TranslateTransform(centerX, centerY);
+    //graphics.TranslateTransform(centerX, centerY);
     graphics.TranslateTransform(translationOffset.X, translationOffset.Y);
     graphics.ScaleTransform(zoomFactor, zoomFactor);
     graphics.RotateTransform(rotationAngle);
