@@ -32,17 +32,13 @@ void SvgPolyline::draw(Graphics& g) {
 		gdiPoints.emplace_back(v.x, v.y);
 	}
 
-	Pen pen(Color::MakeARGB(255, 0, 0, 255), 2.0f);
+	
+	Color strokeColor = getStroke();
+	Pen pen(strokeColor, 2.0f);
 
-	for (size_t i = 0; i < gdiPoints.size() - 1; ++i) {
-		PointF p1 = gdiPoints[i];
-		PointF p2 = gdiPoints[i + 1];
-		g.DrawLine(&pen, p1, p2);
-	}
-
-	if (isClosed == true) {
-		PointF first = gdiPoints.front();
-		PointF last = gdiPoints.back();
-		g.DrawLine(&pen, first, last);
+	if (isClosed) {
+		g.DrawPolygon(&pen, gdiPoints.data(), static_cast<INT>(gdiPoints.size()));
+	} else {
+		g.DrawLines(&pen, gdiPoints.data(), static_cast<INT>(gdiPoints.size()));
 	}
 }

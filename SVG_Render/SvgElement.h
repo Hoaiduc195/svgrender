@@ -22,4 +22,10 @@ class SvgElement {
         void render() {
             //cout << "Rendering SVG Element." << endl;
         }
+        Color getFill() const {
+            return fill;
+		}
+        Color getStroke() const {
+            return stroke;
+        }
 };
