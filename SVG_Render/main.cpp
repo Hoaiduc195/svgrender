@@ -1,14 +1,10 @@
 ﻿#include <windows.h>
-//#include "framework.h"
 #include "SvgViewer.h"
 
-
-int main() {
-	SvgViewer viewer;
-	viewer.run();
-	viewer.loadSvg("../Assets/sample.svg");
-
-	//viewer.render();
-
-	return 0;
+INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
+{
+    SvgViewer viewer;
+    viewer.loadSvg("SVG_Render/Assets/sample.xml");
+    viewer.run();
+    return 0;
 }

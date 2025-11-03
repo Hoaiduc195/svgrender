@@ -1,15 +1,9 @@
 #pragma once
-#include "tinyxml2.h"
 #include "SvgDocument.h"
 #include "SvgElement.h"
-#include "SvgCircle.h"
-#include "SvgRect.h"
-#include "gdipluscolor.h"
-//#include <memory>
+#include "framework.h"
+#include "tinyxml2.h"
 
-
-using namespace std;
-using namespace Gdiplus;
 
 class Parser {
 public:

@@ -1,10 +1,5 @@
 #include"SvgPolygon.h"
-#include <iostream>
-#include <gdiplus.h>
-#include <gdipluscolor.h>
-#pragma comment(lib, "gdiplus.lib")
-using namespace std;
-using namespace Gdiplus;
+#include <vector>
 
 SvgPolygon::~SvgPolygon() {}
 

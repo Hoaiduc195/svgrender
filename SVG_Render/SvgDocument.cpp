@@ -1,4 +1,5 @@
 #include "SvgDocument.h"
+#include "SvgElement.h"
 
 void SvgDocument::addElement(unique_ptr<SvgElement> element)
 {

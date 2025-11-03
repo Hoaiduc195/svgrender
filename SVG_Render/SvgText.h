@@ -3,7 +3,6 @@
 #include<vector>
 #include<string>
 #include "framework.h"
-using namespace Gdiplus;
 
 class SvgText : public SvgElement {
 private:

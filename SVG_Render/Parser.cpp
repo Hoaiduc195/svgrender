@@ -1,11 +1,16 @@
 #include "Parser.h"
+#include "SvgCircle.h"
+#include "SvgRect.h"
+#include "SvgLine.h"
+#include "SvgEllipse.h"
+#include "SvgPolygon.h"
 
 Color Parser::parseColor(const string& value) {
     if (value.empty()) return Color::Black;
 
     if (value[0] == '#') {
         unsigned int r, g, b;
-        if (sscanf(value.c_str() + 1, "%02x%02x%02x", &r, &g, &b) == 3)
+        if (sscanf_s(value.c_str() + 1, "%02x%02x%02x", &r, &g, &b) == 3)
             return Color(255, r, g, b);
     }
 
@@ -54,7 +59,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
        /* string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
         Color fill = parseColor(fillStr);*/
 
-        doc.addElement(make_unique<SvgCircle>(x1, x2, y1, y2));
+        doc.addElement(make_unique<SvgLine>(x1, x2, y1, y2));
     }
     else if (tag == "ellipse") {
         float cx = element->FloatAttribute("cx", 0);
@@ -64,7 +69,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         /* string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
          Color fill = parseColor(fillStr);*/
 
-        doc.addElement(make_unique<SvgCircle>(cx, cy, rx, ry));
+        doc.addElement(make_unique<SvgEllipse>(cx, cy, rx, ry));
     }
     //thieu polygon,polyline
     else if (tag == "svg") {

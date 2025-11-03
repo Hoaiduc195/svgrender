@@ -1,10 +1,4 @@
-#pragma once
-#include<iostream>
-#include "SvgElement.h"
 #include "SvgCircle.h"
-#include "framework.h"
-using namespace std;
-using namespace Gdiplus;
 
 
 SvgCircle::SvgCircle(float centerX, float centerY, float radius) : cx(centerX), cy(centerY), r(radius) {

@@ -1,11 +1,6 @@
 #include"SvgText.h"
-#include <iostream>
-#include <gdiplus.h>
-#include <gdiplusstringformat.h>
-#include <gdipluscolor.h>
-#pragma comment(lib, "gdiplus.lib")
-using namespace std;
-using namespace Gdiplus;
+#include <vector>
+#include <string>
 
 SvgText::~SvgText() {}
 

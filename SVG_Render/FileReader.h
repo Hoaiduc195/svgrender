@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include "framework.h"
-using namespace std;
+
 
 class FileReader {
 public:

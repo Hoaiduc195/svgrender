@@ -1,5 +1,4 @@
 #pragma once
-#include<iostream>
 #include "SvgElement.h"
 #include "framework.h"
 
