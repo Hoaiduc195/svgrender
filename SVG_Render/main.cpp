@@ -1,16 +1,14 @@
-#include <windows.h>
-#include "framework.h"
-using namespace Gdiplus;
+﻿#include <windows.h>
+//#include "framework.h"
+#include "SvgViewer.h"
 
 
+int main() {
+	SvgViewer viewer;
+	viewer.run();
+	viewer.loadSvg("../Assets/sample.svg");
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
-    GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR gdiplusToken;
-    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+	//viewer.render();
 
-    /*.........................*/
-
-    GdiplusShutdown(gdiplusToken);
-    return 0;
+	return 0;
 }

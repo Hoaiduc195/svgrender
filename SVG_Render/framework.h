@@ -13,6 +13,8 @@
 	#include <malloc.h>
 	#include <memory.h>
 	#include <tchar.h>
+
+	// Main project framworks
 	#include <gdiplus.h>
 	#include <iostream>
 	#include <string>

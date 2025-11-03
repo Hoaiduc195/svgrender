@@ -19,7 +19,7 @@ Color Parser::parseColor(const string& value) {
     return Color::Black;
 }
 
-void Parser::ParseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
+void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     if (!element) return;
 
     string tag = element->Name();
@@ -70,7 +70,7 @@ void Parser::ParseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     else if (tag == "svg") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
-            ParseElement(child, doc);
+            parseElement(child, doc);
             child = child->NextSiblingElement();
         }
     }
@@ -91,6 +91,6 @@ unique_ptr<SvgDocument> Parser::parseSVG(const string& xmlText) {
         return nullptr;
     }
 
-    ParseElement(root, *svgDoc);
+    parseElement(root, *svgDoc);
     return svgDoc;
 }

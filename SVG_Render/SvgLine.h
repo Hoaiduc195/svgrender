@@ -1,10 +1,6 @@
 #pragma once
-#include<iostream>
-#include <gdiplus.h>
 #include "SvgElement.h"
 #include "framework.h"
-
-using namespace Gdiplus;
 
 class SvgLine : public SvgElement {
     private:

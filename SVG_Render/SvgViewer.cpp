@@ -1,10 +1,9 @@
 ﻿#include "SvgViewer.h"
-//#include "SvgDocument.h" 
+#include "SvgDocument.h" 
 #include "Parser.h"    
-//#include "FileReader.h" 
+#include "FileReader.h" 
 #include <windows.h>     
 
-// this line is for test
 
 SvgViewer::SvgViewer() {
     screenHeight = 480;
@@ -17,8 +16,6 @@ SvgViewer::~SvgViewer() {
 
 void SvgViewer::loadSvg(const string& filePath) {
     string svgContent = FileReader::ReadFileToString(filePath);
-
-    // 2. Parse
     Parser parser;
     document = parser.parseXMLDocument(svgContent);
 }

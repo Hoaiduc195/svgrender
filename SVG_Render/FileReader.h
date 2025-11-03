@@ -1,8 +1,6 @@
 #pragma once
 #include <string>
-#include <fstream>
-#include <sstream>
-
+#include "framework.h"
 using namespace std;
 
 class FileReader {

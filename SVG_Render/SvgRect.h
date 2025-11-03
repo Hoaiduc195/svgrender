@@ -1,8 +1,6 @@
 #pragma once
 #include<iostream>
-#include <gdiplus.h>
 #include "SvgElement.h"
-#include "tinyxml2.h"
 #include "framework.h"
 
 using namespace Gdiplus;
