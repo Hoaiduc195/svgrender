@@ -88,8 +88,37 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 {
     switch (message)
     {
+    case WM_ERASEBKGND:
+        return 1;
     case WM_PAINT:
+    {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+
+        RECT clientRect;
+        GetClientRect(hWnd, &clientRect);
+        int width = clientRect.right - clientRect.left;
+        int height = clientRect.bottom - clientRect.top;
+        if (width > 0 && height > 0)
+        {
+            Bitmap offscreenBitmap(width, height);
+            Graphics graphics_buffer(&offscreenBitmap);
+            render(graphics_buffer);
+            Graphics graphics_window(hdc);
+            graphics_window.DrawImage(&offscreenBitmap, 0, 0);
+        }
+        EndPaint(hWnd, &ps);
         return 0;
+    }
+
+    case WM_SIZE:
+    {
+        screenWidth = LOWORD(lParam);
+        screenHeight = HIWORD(lParam);
+        InvalidateRect(hWnd, NULL, FALSE);
+        return 0;
+    }
+
     case WM_MOUSEWHEEL:
     {
         float zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
@@ -100,6 +129,10 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
         InvalidateRect(hWnd, NULL, FALSE);
         return 0;
     }
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
     }
 
     return DefWindowProc(hWnd, message, wParam, lParam);

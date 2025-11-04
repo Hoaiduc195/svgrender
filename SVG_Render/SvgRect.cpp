@@ -6,8 +6,8 @@ SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry
 }
 
 void SvgRect::draw(Graphics& graphics){
-    Pen pen(Color(255, 0, 0, 0)); 
-    SolidBrush brush(Color(255, 255, 0, 0));
+    Pen pen(stroke); 
+    SolidBrush brush(fill);
     graphics.FillRectangle(&brush, x, y, width, height);
     graphics.DrawRectangle(&pen, x, y, width, height);
 }
