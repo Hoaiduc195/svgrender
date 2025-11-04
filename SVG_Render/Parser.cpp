@@ -38,9 +38,10 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float ry = element->FloatAttribute("ry", 0);
         string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
         Color fill = parseColor(fillStr);
-
-        //chua co stroke: do day
-        doc.addElement(make_unique<SvgRect>(x, y, w, h, rx, ry, fill));
+		auto rect = make_unique<SvgRect>(x, y, w, h, rx, ry);
+		// TODO: Update fill, stroke, etc. properties
+		// rect->setFill(fill); ...
+        doc.addElement(move(rect));
     }
     else if (tag == "circle") {
         float cx = element->FloatAttribute("cx", 0);
@@ -49,6 +50,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         /*string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
         Color fill = parseColor(fillStr);*/
 
+        // TODO: Update fill, stroke, etc. properties
         doc.addElement(make_unique<SvgCircle>(cx, cy, r));
     }
     else if (tag == "line") {
@@ -58,7 +60,8 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float y2 = element->FloatAttribute("y2", 0);
        /* string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
         Color fill = parseColor(fillStr);*/
-
+            
+        // TODO: Update fill, stroke, etc. properties
         doc.addElement(make_unique<SvgLine>(x1, x2, y1, y2));
     }
     else if (tag == "ellipse") {
@@ -69,6 +72,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         /* string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
          Color fill = parseColor(fillStr);*/
 
+        // TODO: Update fill, stroke, etc. properties
         doc.addElement(make_unique<SvgEllipse>(cx, cy, rx, ry));
     }
     //thieu polygon,polyline

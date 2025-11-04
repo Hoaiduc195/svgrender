@@ -12,8 +12,7 @@ class SvgRect : public SvgElement {
         float height;
         float rx;
         float ry;
-        Color fillColor;
     public:
-        SvgRect(float x, float y, float width, float height, float rx, float ry, const Color& fill);
+        SvgRect(float x, float y, float width, float height, float rx, float ry);
         void draw(Graphics& graphics) override;
 };

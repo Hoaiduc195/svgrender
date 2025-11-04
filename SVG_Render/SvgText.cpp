@@ -49,8 +49,7 @@ void SvgText::draw(Graphics& g) {
 
 	FontFamily fontFamily(L"Arial");
 	Font font(&fontFamily, 16, FontStyleRegular, UnitPixel);
-	Color strokeColor = getStroke();
-	SolidBrush brush(strokeColor);
+	SolidBrush brush(stroke);
 	g.DrawString(
 		std::wstring(content.begin(), content.end()).c_str(),
 		-1,

@@ -5,27 +5,22 @@
 using namespace Gdiplus;
 
 class SvgElement {
-    private:
-        string id;
+    protected:
+        //string id; ??
         Color fill;
         Color stroke;
         float strokeWidth;
         float strokeOpacity;
         float fillOpacity;
+
     public:
         virtual void draw(Graphics& graphics) = 0;
         virtual ~SvgElement() = default;
-        SvgElement() {
-            //cout << "SvgElement created." << endl;
-        }
-        
-        void render() {
-            //cout << "Rendering SVG Element." << endl;
-        }
-        Color getFill() const {
-            return fill;
-		}
-        Color getStroke() const {
-            return stroke;
-        }
+        SvgElement();
+        // Setters
+        void setFill(const Color& fillColor);
+		void setStroke(const Color& strokeColor);
+		void setStrokeWidth(float width);
+		void setStrokeOpacity(float opacity);
+		void setFillOpacity(float opacity);
 };

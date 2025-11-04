@@ -1,7 +1,7 @@
 #include "SvgRect.h"
 
 
-SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry, const Color& fill) : x(x), y(y), width(width), height(height), rx(rx), ry(ry), fillColor(fill) {
+SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry) : x(x), y(y), width(width), height(height), rx(rx), ry(ry) {
     cout << "SvgRect created." << endl;
 }
 

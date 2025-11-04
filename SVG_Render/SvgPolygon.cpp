@@ -31,12 +31,8 @@ void SvgPolygon::draw(Graphics& g)  {
 	for (const auto& v : points) {
 		gdiPoints.emplace_back(v.x, v.y);
 	}
-
-	Color strokeColor = getStroke();
-	Pen pen(strokeColor, 2.0f);
-
-	Color fillColor = getFill();
-	SolidBrush brush(fillColor);
+	Pen pen(stroke, 2.0f);
+	SolidBrush brush(fill);
 
 	g.DrawPolygon(&pen, gdiPoints.data(), (int)gdiPoints.size());
 	g.FillPolygon(&brush, gdiPoints.data(), (int)gdiPoints.size());

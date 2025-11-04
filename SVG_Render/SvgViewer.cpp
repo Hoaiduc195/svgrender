@@ -42,7 +42,6 @@ SvgViewer::SvgViewer()
 SvgViewer::~SvgViewer()
 {
 }
-
 void SvgViewer::run()
 {
     GdiplusStartupInput gdiplusStartupInput;
@@ -74,30 +73,14 @@ void SvgViewer::run()
     }
 
     ShowWindow(m_hWnd, SW_SHOW);
-    UpdateWindow(m_hWnd);
+    UpdateWindow(m_hWnd); 
 
     MSG msg = {};
-    bool running = true;
-    while (running)
+    while (GetMessage(&msg, NULL, 0, 0) > 0)
     {
-        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-        {
-            if (msg.message == WM_QUIT)
-            {
-                running = false;
-                break;
-            }
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
-        if (!running)
-            break;
-
-        handleInput();
-        InvalidateRect(m_hWnd, NULL, FALSE);
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
-
     GdiplusShutdown(gdiplusToken);
 }
 
@@ -106,25 +89,7 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
     switch (message)
     {
     case WM_PAINT:
-    {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hWnd, &ps);
-
-        Graphics graphics(hdc);
-
-        render(graphics);
-
-        EndPaint(hWnd, &ps);
         return 0;
-    }
-
-    case WM_SIZE:
-    {
-        screenWidth = LOWORD(lParam);
-        screenHeight = HIWORD(lParam);
-        return 0;
-    }
-
     case WM_MOUSEWHEEL:
     {
         float zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
@@ -132,13 +97,9 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
             zoomFactor *= 1.1f;
         else
             zoomFactor *= 0.9f;
-
+        InvalidateRect(hWnd, NULL, FALSE);
         return 0;
     }
-
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        return 0;
     }
 
     return DefWindowProc(hWnd, message, wParam, lParam);
