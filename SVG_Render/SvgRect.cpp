@@ -6,8 +6,6 @@ SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry
 }
 
 void SvgRect::draw(Graphics& graphics){
-    /*Pen pen(stroke); 
-    SolidBrush brush(fill);*/ //ko hieu cai nay nha
     SolidBrush brush(Color(
         static_cast<BYTE>(fillOpacity * 255),
         fill.GetR(), fill.GetG(), fill.GetB()));

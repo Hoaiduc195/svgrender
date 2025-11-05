@@ -6,8 +6,8 @@ SvgCircle::SvgCircle(float centerX, float centerY, float radius) : cx(centerX), 
 }
 
 void SvgCircle::draw(Graphics& graphics){
-    Pen pen(stroke); 
-    SolidBrush brush(fill); 
+    Pen pen(Color(static_cast<BYTE>(strokeOpacity*255), stroke.GetR(), stroke.GetG(), stroke.GetB()), strokeWidth); 
+    SolidBrush brush(Color(static_cast<BYTE>(fillOpacity*255), fill.GetR(), fill.GetG(), fill.GetB())); 
     graphics.FillEllipse(&brush, cx - r, cy - r, r * 2, r * 2);
     graphics.DrawEllipse(&pen, cx - r, cy - r, r * 2, r * 2);
 }

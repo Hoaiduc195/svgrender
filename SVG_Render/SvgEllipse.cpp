@@ -6,7 +6,7 @@ SvgEllipse::SvgEllipse(float cx, float cy, float rx, float ry) : cx(cx), cy(cy),
 }
 
 void SvgEllipse::draw(Graphics& graphics)  {
-    Pen pen(stroke);
+    Pen pen(stroke, strokeWidth);
     SolidBrush brush(fill);
     graphics.FillEllipse(&brush, cx - rx, cy - ry, rx * 2, ry * 2);
     graphics.DrawEllipse(&pen, cx - rx, cy - ry, rx * 2, ry * 2);

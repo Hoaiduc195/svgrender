@@ -1,7 +1,7 @@
 #include "SvgElement.h"
 
 SvgElement::SvgElement() {
-	fill = Color(0, 255, 0); // Blue by default
+	fill = Color(0, 0, 255); // Blue by default
 	stroke = Color(0, 0, 0);     // Black by default
 	strokeWidth = 0.0;
 	strokeOpacity = 1.0f;

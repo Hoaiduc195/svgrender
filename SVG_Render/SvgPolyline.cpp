@@ -32,7 +32,8 @@ void SvgPolyline::draw(Graphics& g) {
 		gdiPoints.emplace_back(v.x, v.y);
 	}
 
-	Pen pen(stroke, 2.0f);
+	Pen pen(Color(static_cast<BYTE>(strokeOpacity*255), stroke.GetR(), stroke.GetG(), stroke.GetB()), strokeWidth);
+	
 	if (isClosed) {
 		g.DrawPolygon(&pen, gdiPoints.data(), static_cast<INT>(gdiPoints.size()));
 	} else {
