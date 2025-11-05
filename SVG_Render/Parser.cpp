@@ -8,12 +8,9 @@
 Color Parser::parseColor(const string& value) {
     if (value.empty()) return Color::Black;
 
-    if (value[0] == '#') {
-        unsigned int r, g, b;
-        if (sscanf_s(value.c_str() + 1, "%02x%02x%02x", &r, &g, &b) == 3)
-            return Color(255, r, g, b);
-    }
-
+    unsigned int r, g, b;
+    if (sscanf_s(value.c_str(), "rgb(%d,%d,%d)", &r, &g, &b) == 3)
+       return Color(255, r, g, b);
     if (value == "red") return Color::Red;
     if (value == "blue") return Color::Blue;
     if (value == "green") return Color::Green;
@@ -23,6 +20,17 @@ Color Parser::parseColor(const string& value) {
 
     return Color::Black;
 }
+//Color Parser::parseColor(const string& colorStr) {
+//    if (colorStr.empty())
+//        return Color(255, 0, 0, 0); // default black
+//
+//    int r = 0, g = 0, b = 0;
+//    if (sscanf(colorStr.c_str(), "rgb(%d,%d,%d)", &r, &g, &b) == 3) {
+//        return Color(255, r, g, b);
+//    }
+//
+//    return Color(255, 0, 0, 0); // fallback: black
+//}
 
 void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     if (!element) return;
@@ -36,44 +44,102 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float h = element->FloatAttribute("height", 0);
         float rx = element->FloatAttribute("rx", 0);
         float ry = element->FloatAttribute("ry", 0);
+        auto rect = make_unique<SvgRect>(x, y, w, h, rx, ry);
+
         string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
         Color fill = parseColor(fillStr);
-		auto rect = make_unique<SvgRect>(x, y, w, h, rx, ry);
-		// TODO: Update fill, stroke, etc. properties
-		// rect->setFill(fill); ...
+        rect->setFill(fill);
+
+        string strokeStr = element->Attribute("stroke") ? element->Attribute("stroke") : "";
+        Color stroke = parseColor(strokeStr);
+        rect->setStroke(stroke);
+
+        float strokeWidth = element->FloatAttribute("stroke-width", 0);
+        rect->setStrokeWidth(strokeWidth);
+
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 0);
+        rect->setStrokeOpacity(strokeOpacity);
+
+        float fillOpacity = element->FloatAttribute("fill-opacity", 0);
+        rect->setFillOpacity(fillOpacity);
+
         doc.addElement(move(rect));
     }
     else if (tag == "circle") {
         float cx = element->FloatAttribute("cx", 0);
         float cy = element->FloatAttribute("cy", 0);
         float r = element->FloatAttribute("r", 0);
-        /*string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
-        Color fill = parseColor(fillStr);*/
+        auto cir = make_unique<SvgCircle>(cx, cy, r);
 
-        // TODO: Update fill, stroke, etc. properties
-        doc.addElement(make_unique<SvgCircle>(cx, cy, r));
+        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);
+        cir->setFill(fill);
+
+        string strokeStr = element->Attribute("stroke") ? element->Attribute("stroke") : "";
+        Color stroke = parseColor(strokeStr);
+        cir->setStroke(stroke);
+
+        float strokeWidth = element->FloatAttribute("stroke-width", 0);
+        cir->setStrokeWidth(strokeWidth);
+
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 0);
+        cir->setStrokeOpacity(strokeOpacity);
+
+        float fillOpacity = element->FloatAttribute("fill-opacity", 0);
+        cir->setFillOpacity(fillOpacity);
+        doc.addElement(move(cir));
     }
     else if (tag == "line") {
         float x1 = element->FloatAttribute("x1", 0);
         float y1 = element->FloatAttribute("y1", 0);
         float x2 = element->FloatAttribute("x2", 0);
         float y2 = element->FloatAttribute("y2", 0);
-       /* string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
-        Color fill = parseColor(fillStr);*/
-            
-        // TODO: Update fill, stroke, etc. properties
-        doc.addElement(make_unique<SvgLine>(x1, x2, y1, y2));
+        auto line = make_unique<SvgLine>(x1,x2,y1,y2);
+
+        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);
+        line->setFill(fill);
+
+        string strokeStr = element->Attribute("stroke") ? element->Attribute("stroke") : "";
+        Color stroke = parseColor(strokeStr);
+        line->setStroke(stroke);
+
+        float strokeWidth = element->FloatAttribute("stroke-width", 0);
+        line->setStrokeWidth(strokeWidth);
+
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 0);
+        line->setStrokeOpacity(strokeOpacity);
+
+        float fillOpacity = element->FloatAttribute("fill-opacity", 0);
+        line->setFillOpacity(fillOpacity);
+        doc.addElement(move(line));
+
     }
     else if (tag == "ellipse") {
         float cx = element->FloatAttribute("cx", 0);
         float cy = element->FloatAttribute("cy", 0);
         float rx = element->FloatAttribute("rx", 0);
         float ry = element->FloatAttribute("ry", 0);
-        /* string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
-         Color fill = parseColor(fillStr);*/
+        
+        auto elli = make_unique<SvgEllipse>(cx,cy,rx,ry);
 
-        // TODO: Update fill, stroke, etc. properties
-        doc.addElement(make_unique<SvgEllipse>(cx, cy, rx, ry));
+        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);
+        elli->setFill(fill);
+
+        string strokeStr = element->Attribute("stroke") ? element->Attribute("stroke") : "";
+        Color stroke = parseColor(strokeStr);
+        elli->setStroke(stroke);
+
+        float strokeWidth = element->FloatAttribute("stroke-width", 0);
+        elli->setStrokeWidth(strokeWidth);
+
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 0);
+        elli->setStrokeOpacity(strokeOpacity);
+
+        float fillOpacity = element->FloatAttribute("fill-opacity", 0);
+        elli->setFillOpacity(fillOpacity);
+        doc.addElement(move(elli));
     }
     //thieu polygon,polyline
     else if (tag == "svg") {

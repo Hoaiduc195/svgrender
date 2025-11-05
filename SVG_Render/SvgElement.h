@@ -4,9 +4,13 @@
 
 using namespace Gdiplus;
 
+template <typename T>
+T clamp(T value, T minVal, T maxVal) {
+    return max(minVal, min(value, maxVal));
+}
+
 class SvgElement {
     protected:
-        //string id; ??
         Color fill;
         Color stroke;
         float strokeWidth;
