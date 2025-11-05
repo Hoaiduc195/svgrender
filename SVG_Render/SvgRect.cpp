@@ -6,12 +6,12 @@ SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry
 }
 
 void SvgRect::draw(Graphics& graphics){
-    SolidBrush brush(Color(
-        static_cast<BYTE>(fillOpacity * 255),
-        fill.GetR(), fill.GetG(), fill.GetB()));
     Pen pen(Color(
         static_cast<BYTE>(strokeOpacity * 255),
         stroke.GetR(), stroke.GetG(), stroke.GetB()), strokeWidth);
+    SolidBrush brush(Color(
+        static_cast<BYTE>(fillOpacity * 255),
+        fill.GetR(), fill.GetG(), fill.GetB()));
     graphics.FillRectangle(&brush, x, y, width, height);
     graphics.DrawRectangle(&pen, x, y, width, height);
 }

@@ -27,7 +27,7 @@ void SvgPolyline::draw(Graphics& g) {
 	g.SetPageUnit(UnitPixel);
 	g.SetPageScale(1.0f);
 
-	std::vector<Gdiplus::PointF> gdiPoints;
+	std::vector<PointF> gdiPoints;
 	for (const auto& v : points) {
 		gdiPoints.emplace_back(v.x, v.y);
 	}
