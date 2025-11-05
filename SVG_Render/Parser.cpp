@@ -1,9 +1,32 @@
+#pragma once
 #include "Parser.h"
 #include "SvgCircle.h"
 #include "SvgRect.h"
 #include "SvgLine.h"
 #include "SvgEllipse.h"
 #include "SvgPolygon.h"
+#include "SvgPolyline.h"
+
+static vector<Vector2> parsePoints(const string& pointsStr) {
+    vector<Vector2> pts;
+    stringstream ss(pointsStr);
+    string token;
+
+    while (getline(ss, token, ' ')) {
+        size_t commaPos = token.find(',');
+        if (commaPos != string::npos) {
+            try {
+                float x = stof(token.substr(0, commaPos));
+                float y = stof(token.substr(commaPos + 1));
+                pts.emplace_back(x, y);
+            }
+            catch (...) { //doc kh duoc thi bo qua 
+                continue;
+            }
+        }
+    }
+    return pts;
+}
 
 Color Parser::parseColor(const string& value) {
     if (value.empty()) return Color::Black;
@@ -11,6 +34,8 @@ Color Parser::parseColor(const string& value) {
     unsigned int r, g, b;
     if (sscanf_s(value.c_str(), "rgb(%d,%d,%d)", &r, &g, &b) == 3)
        return Color(255, r, g, b);
+
+    //neu dau vao la ten
     if (value == "red") return Color::Red;
     if (value == "blue") return Color::Blue;
     if (value == "green") return Color::Green;
@@ -20,17 +45,6 @@ Color Parser::parseColor(const string& value) {
 
     return Color::Black;
 }
-//Color Parser::parseColor(const string& colorStr) {
-//    if (colorStr.empty())
-//        return Color(255, 0, 0, 0); // default black
-//
-//    int r = 0, g = 0, b = 0;
-//    if (sscanf(colorStr.c_str(), "rgb(%d,%d,%d)", &r, &g, &b) == 3) {
-//        return Color(255, r, g, b);
-//    }
-//
-//    return Color(255, 0, 0, 0); // fallback: black
-//}
 
 void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     if (!element) return;
@@ -63,6 +77,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float fillOpacity = element->FloatAttribute("fill-opacity", 0);
         rect->setFillOpacity(fillOpacity);
 
+        //them vao tai lieu svg
         doc.addElement(move(rect));
     }
     else if (tag == "circle") {
@@ -141,7 +156,64 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         elli->setFillOpacity(fillOpacity);
         doc.addElement(move(elli));
     }
-    //thieu polygon,polyline
+
+    else if (tag == "polygon") {
+        const char* pointsAttr = element->Attribute("points");
+        vector<Vector2> pts;
+        if (pointsAttr) {
+            pts = parsePoints(pointsAttr);
+        }
+
+        //khep kin
+        auto poly = make_unique<SvgPolygon>(pts, true);
+
+        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);
+        poly->setFill(fill);
+
+        string strokeStr = element->Attribute("stroke") ? element->Attribute("stroke") : "";
+        Color stroke = parseColor(strokeStr);
+        poly->setStroke(stroke);
+
+        float strokeWidth = element->FloatAttribute("stroke-width", 1);
+        poly->setStrokeWidth(strokeWidth);
+
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
+        poly->setStrokeOpacity(strokeOpacity);
+
+        float fillOpacity = element->FloatAttribute("fill-opacity", 1);
+        poly->setFillOpacity(fillOpacity);
+
+        doc.addElement(move(poly));
+    }
+    else if (tag == "polyline") {
+        const char* pointsAttr = element->Attribute("points");
+        vector<Vector2> pts;
+        if (pointsAttr) {
+            pts = parsePoints(pointsAttr);
+        }
+
+        auto polyline = make_unique<SvgPolyline>(pts, false); //kh khep kin
+
+        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);
+        polyline->setFill(fill);
+
+        string strokeStr = element->Attribute("stroke") ? element->Attribute("stroke") : "";
+        Color stroke = parseColor(strokeStr);
+        polyline->setStroke(stroke);
+
+        float strokeWidth = element->FloatAttribute("stroke-width", 1);
+        polyline->setStrokeWidth(strokeWidth);
+
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
+        polyline->setStrokeOpacity(strokeOpacity);
+
+        float fillOpacity = element->FloatAttribute("fill-opacity", 1);
+        polyline->setFillOpacity(fillOpacity);
+
+        doc.addElement(move(polyline));
+    }
     else if (tag == "svg") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
