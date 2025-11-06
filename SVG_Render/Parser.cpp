@@ -6,6 +6,7 @@
 #include "SvgEllipse.h"
 #include "SvgPolygon.h"
 #include "SvgPolyline.h"
+#include "SvgText.h"
 
 static vector<Vector2> parsePoints(const string& pointsStr) {
     vector<Vector2> pts;
@@ -214,6 +215,37 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
 
         doc.addElement(move(polyline));
     }
+    else if (tag == "text") {
+        float x = element->FloatAttribute("x", 0);
+        float y = element->FloatAttribute("y", 0);
+        float font = element->FloatAttribute("font-size", 12.0f);
+        float rotationAngle = element->FloatAttribute("rotate", 0);
+
+        string content = element->GetText();
+        //can le trai phai giua
+        string textAnchor = element->Attribute("text-anchor") ? element->Attribute("text-anchor") : "start";
+        auto text = make_unique<SvgText>(x, y, font, rotationAngle, content, textAnchor);
+
+        string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
+        Color fill = parseColor(fillStr);
+        text->setFill(fill);
+
+        string strokeStr = element->Attribute("stroke") ? element->Attribute("stroke") : "";
+        Color stroke = parseColor(strokeStr);
+        text->setStroke(stroke);
+
+        float strokeWidth = element->FloatAttribute("stroke-width", 0);
+        text->setStrokeWidth(strokeWidth);
+
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
+        text->setStrokeOpacity(strokeOpacity);
+
+        float fillOpacity = element->FloatAttribute("fill-opacity", 1);
+        text->setFillOpacity(fillOpacity);
+
+        doc.addElement(move(text));
+
+        }
     else if (tag == "svg") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {

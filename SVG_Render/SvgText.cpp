@@ -7,6 +7,7 @@ SvgText::~SvgText() {}
 SvgText::SvgText() {
 	x = 0.0f;
 	y = 0.0f;
+	font = 12.0f;
 	rotationAngle = 0.0f;
 	content = "";
 	textAnchor = "start";
@@ -15,14 +16,16 @@ SvgText::SvgText() {
 SvgText::SvgText(const SvgText& other) {
 	x = other.x;
 	y = other.y;
+	font = other.font;
 	rotationAngle = other.rotationAngle;
 	content = other.content;
 	textAnchor = other.textAnchor;
 }
 
-SvgText::SvgText(float _x, float _y, float angle, const string& txt, const string& anchor) {
+SvgText::SvgText(float _x, float _y, float _font, float angle, const string& txt, const string& anchor) {
 	x = _x;
 	y = _y;
+	font = _font;
 	rotationAngle = angle;
 	content = txt;
 	textAnchor = anchor;
