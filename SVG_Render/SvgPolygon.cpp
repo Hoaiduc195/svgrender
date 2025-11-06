@@ -31,9 +31,22 @@ void SvgPolygon::draw(Graphics& g)  {
 	for (const auto& v : points) {
 		gdiPoints.emplace_back(v.x, v.y);
 	}
-	Pen pen(Color(static_cast<BYTE>(strokeOpacity * 255), stroke.GetR(), stroke.GetG(), stroke.GetB()), strokeWidth);
+	/*Pen pen(Color(static_cast<BYTE>(strokeOpacity * 255), stroke.GetR(), stroke.GetG(), stroke.GetB()), strokeWidth);
 	SolidBrush brush(Color(static_cast<BYTE>(fillOpacity*255), fill.GetR(), fill.GetG(), fill.GetB()));
 
-	g.DrawPolygon(&pen, gdiPoints.data(), (int)gdiPoints.size());
-	g.FillPolygon(&brush, gdiPoints.data(), (int)gdiPoints.size());
+	g.FillPolygon(&brush, gdiPoints.data(), (int)gdiPoints.size(), FillModeAlternate);
+	g.DrawPolygon(&pen, gdiPoints.data(), (int)gdiPoints.size());*/
+
+	if (fillOpacity > 0) {
+		SolidBrush brush(Color(static_cast<BYTE>(fillOpacity * 255),
+			fill.GetR(), fill.GetG(), fill.GetB()));
+		g.FillPolygon(&brush, gdiPoints.data(), (INT)gdiPoints.size(), FillModeAlternate);
+	}
+
+	if (strokeOpacity > 0 && strokeWidth > 0) {
+		Pen pen(Color(static_cast<BYTE>(strokeOpacity * 255),
+			stroke.GetR(), stroke.GetG(), stroke.GetB()), strokeWidth);
+		g.DrawPolygon(&pen, gdiPoints.data(), (INT)gdiPoints.size());
+	}
+	
 }

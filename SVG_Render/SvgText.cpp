@@ -28,7 +28,8 @@ SvgText::SvgText(float _x, float _y, float angle, const string& txt, const strin
 	textAnchor = anchor;
 }
 
-void SvgText::draw(Graphics& g) {
+void SvgText::draw(Graphics& g) {\
+
 	g.SetTextContrast(0);
 	g.SetSmoothingMode(SmoothingModeHighQuality);
 	g.SetCompositingQuality(CompositingQualityHighQuality);

@@ -71,10 +71,10 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float strokeWidth = element->FloatAttribute("stroke-width", 0);
         rect->setStrokeWidth(strokeWidth);
 
-        float strokeOpacity = element->FloatAttribute("stroke-opacity", 0);
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
         rect->setStrokeOpacity(strokeOpacity);
 
-        float fillOpacity = element->FloatAttribute("fill-opacity", 0);
+        float fillOpacity = element->FloatAttribute("fill-opacity", 1);
         rect->setFillOpacity(fillOpacity);
 
         //them vao tai lieu svg
@@ -97,10 +97,10 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float strokeWidth = element->FloatAttribute("stroke-width", 0);
         cir->setStrokeWidth(strokeWidth);
 
-        float strokeOpacity = element->FloatAttribute("stroke-opacity", 0);
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
         cir->setStrokeOpacity(strokeOpacity);
 
-        float fillOpacity = element->FloatAttribute("fill-opacity", 0);
+        float fillOpacity = element->FloatAttribute("fill-opacity", 1);
         cir->setFillOpacity(fillOpacity);
         doc.addElement(move(cir));
     }
@@ -109,7 +109,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float y1 = element->FloatAttribute("y1", 0);
         float x2 = element->FloatAttribute("x2", 0);
         float y2 = element->FloatAttribute("y2", 0);
-        auto line = make_unique<SvgLine>(x1,x2,y1,y2);
+        auto line = make_unique<SvgLine>(x1,y1,x2,y2);
 
         string fillStr = element->Attribute("fill") ? element->Attribute("fill") : "";
         Color fill = parseColor(fillStr);
@@ -122,10 +122,10 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float strokeWidth = element->FloatAttribute("stroke-width", 0);
         line->setStrokeWidth(strokeWidth);
 
-        float strokeOpacity = element->FloatAttribute("stroke-opacity", 0);
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
         line->setStrokeOpacity(strokeOpacity);
 
-        float fillOpacity = element->FloatAttribute("fill-opacity", 0);
+        float fillOpacity = element->FloatAttribute("fill-opacity", 1);
         line->setFillOpacity(fillOpacity);
         doc.addElement(move(line));
 
@@ -149,10 +149,10 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         float strokeWidth = element->FloatAttribute("stroke-width", 0);
         elli->setStrokeWidth(strokeWidth);
 
-        float strokeOpacity = element->FloatAttribute("stroke-opacity", 0);
+        float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
         elli->setStrokeOpacity(strokeOpacity);
 
-        float fillOpacity = element->FloatAttribute("fill-opacity", 0);
+        float fillOpacity = element->FloatAttribute("fill-opacity", 1);
         elli->setFillOpacity(fillOpacity);
         doc.addElement(move(elli));
     }
@@ -175,7 +175,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         Color stroke = parseColor(strokeStr);
         poly->setStroke(stroke);
 
-        float strokeWidth = element->FloatAttribute("stroke-width", 1);
+        float strokeWidth = element->FloatAttribute("stroke-width", 0);
         poly->setStrokeWidth(strokeWidth);
 
         float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
@@ -203,7 +203,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         Color stroke = parseColor(strokeStr);
         polyline->setStroke(stroke);
 
-        float strokeWidth = element->FloatAttribute("stroke-width", 1);
+        float strokeWidth = element->FloatAttribute("stroke-width", 0);
         polyline->setStrokeWidth(strokeWidth);
 
         float strokeOpacity = element->FloatAttribute("stroke-opacity", 1);
