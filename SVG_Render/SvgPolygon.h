@@ -1,6 +1,5 @@
 #pragma once
 #include"SvgElement.h"
-#include<vector>
 #include "framework.h"
 #include "Vector2.h"
 

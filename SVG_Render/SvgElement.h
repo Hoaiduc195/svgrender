@@ -1,8 +1,6 @@
 #pragma once
-#include<iostream>
 #include "framework.h"
 
-using namespace Gdiplus;
 
 template <typename T>
 T clamp(T value, T minVal, T maxVal) {
@@ -21,6 +19,7 @@ class SvgElement {
         virtual void draw(Graphics& graphics) = 0;
         virtual ~SvgElement() = default;
         SvgElement();
+
         // Setters
         void setFill(const Color& fillColor);
 		void setStroke(const Color& strokeColor);

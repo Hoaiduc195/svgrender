@@ -1,7 +1,6 @@
 #pragma once
 #include "SvgElement.h"
 #include "framework.h"
-using namespace Gdiplus;
 
 class SvgCircle : public SvgElement {
     private:

@@ -31,6 +31,7 @@ void SvgPolygon::draw(Graphics& g)  {
 	for (const auto& v : points) {
 		gdiPoints.emplace_back(v.x, v.y);
 	}
+
 	/*Pen pen(Color(static_cast<BYTE>(strokeOpacity * 255), stroke.GetR(), stroke.GetG(), stroke.GetB()), strokeWidth);
 	SolidBrush brush(Color(static_cast<BYTE>(fillOpacity*255), fill.GetR(), fill.GetG(), fill.GetB()));
 
