@@ -38,6 +38,7 @@ void SvgPolygon::draw(Graphics& g)  {
 	g.FillPolygon(&brush, gdiPoints.data(), (int)gdiPoints.size(), FillModeAlternate);
 	g.DrawPolygon(&pen, gdiPoints.data(), (int)gdiPoints.size());*/
 
+
 	if (fillOpacity > 0) {
 		SolidBrush brush(Color(static_cast<BYTE>(fillOpacity * 255),
 			fill.GetR(), fill.GetG(), fill.GetB()));

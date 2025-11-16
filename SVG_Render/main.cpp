@@ -1,5 +1,4 @@
-﻿#include <windows.h>
-#include "SvgViewer.h"
+﻿#include "SvgViewer.h"
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 {

@@ -23,7 +23,6 @@ public:
 
     void run();
     LRESULT handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-
     void loadSvg(const string& filePath);
     void handleInput();
     void render(Graphics& graphics);
