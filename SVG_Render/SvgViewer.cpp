@@ -151,6 +151,10 @@ void SvgViewer::loadSvg(const string& filePath)
 void SvgViewer::render(Graphics& graphics)
 {
     graphics.Clear(Color(255, 255, 255, 255));
+    graphics.SetSmoothingMode(SmoothingModeHighQuality);
+    graphics.SetInterpolationMode(InterpolationModeHighQualityBicubic);
+    graphics.SetPageUnit(UnitPixel);
+    graphics.SetPageScale(1.0f);
 
     //float centerX = screenWidth / 2.0f;
     //float centerY = screenHeight / 2.0f;

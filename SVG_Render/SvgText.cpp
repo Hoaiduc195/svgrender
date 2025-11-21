@@ -24,13 +24,6 @@ SvgText::SvgText(float _x, float _y, float _fontSize, const string& _content) {
 
 
 void SvgText::draw(Graphics& g) {
-    g.SetTextContrast(0);
-    g.SetSmoothingMode(SmoothingModeHighQuality);
-    g.SetCompositingQuality(CompositingQualityHighQuality);
-    g.SetTextRenderingHint(TextRenderingHintAntiAliasGridFit);
-    g.SetPixelOffsetMode(PixelOffsetModeHighQuality);
-    g.SetPageUnit(UnitPixel);
-
     StringFormat format; 
 
     FontFamily fontFamily(L"Times New Roman");

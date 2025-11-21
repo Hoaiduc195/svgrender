@@ -2,7 +2,6 @@
 #include "SvgElement.h"
 #include "framework.h"
 
-using namespace Gdiplus;
 
 class SvgEllipse : public SvgElement {
     private:

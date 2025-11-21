@@ -20,11 +20,6 @@ SvgPolyline::SvgPolyline(vector<Vector2> pts, bool closed) {
 void SvgPolyline::draw(Graphics& g) {
     if (points.size() < 2) return;
 
-    g.SetSmoothingMode(SmoothingModeHighQuality);
-    g.SetCompositingQuality(CompositingQualityHighQuality);
-    g.SetInterpolationMode(InterpolationModeHighQualityBicubic);
-    g.SetPixelOffsetMode(PixelOffsetModeHalf); // better alignment
-
     std::vector<PointF> gdiPoints;
     for (const auto& v : points)
         gdiPoints.emplace_back(v.x, v.y);

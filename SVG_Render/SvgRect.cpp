@@ -6,13 +6,6 @@ SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry
 }
 
 void SvgRect::draw(Graphics& graphics){
-    
-    graphics.SetSmoothingMode(SmoothingModeHighQuality);
-    graphics.SetCompositingQuality(CompositingQualityHighQuality);
-    graphics.SetInterpolationMode(InterpolationModeHighQualityBicubic);
-    graphics.SetPixelOffsetMode(PixelOffsetModeHighQuality);
-    graphics.SetPageUnit(UnitPixel);
-    graphics.SetPageScale(1.0f);
 
     Pen pen(Color(
         static_cast<BYTE>(strokeOpacity * 255),
