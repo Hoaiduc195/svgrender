@@ -25,5 +25,5 @@ class SvgElement {
 		void setStroke(const Color& strokeColor);
 		void setStrokeWidth(float width);
 		void setStrokeOpacity(float opacity);
-		void setFillOpacity(float opacity);
+		void setFillOpacity(float opacity);     
 };
