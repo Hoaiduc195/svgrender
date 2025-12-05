@@ -371,3 +371,4 @@ FodyWeavers.xsd
 
 # User config
 SVG_Render/Assets
+.vscode
