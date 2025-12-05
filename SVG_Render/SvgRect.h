@@ -2,9 +2,7 @@
 #include "SvgElement.h"
 #include "framework.h"
 
-class Renderer;
-
-using namespace Gdiplus;
+class Renderer; 
 
 class SvgRect : public SvgElement {
     private:

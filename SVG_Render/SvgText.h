@@ -1,6 +1,7 @@
 #pragma once
 #include "SvgElement.h"
 #include "framework.h"
+
 class Renderer;
 
 class SvgText : public SvgElement {

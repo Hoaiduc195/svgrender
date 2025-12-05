@@ -2,6 +2,8 @@
 #include "SvgDocument.h"
 #include "Parser.h"
 #include "FileReader.h"
+#include <windowsx.h>
+#include <commctrl.h>
 
 
 LRESULT CALLBACK GlobalWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -122,10 +124,40 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
     case WM_MOUSEWHEEL:
     {
         float zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+
+        // Zoom at the center of the viewport only
         if (zDelta > 0)
             zoomFactor *= 1.1f;
         else
             zoomFactor *= 0.9f;
+
+        // Clamp zoom
+        if (zoomFactor < 0.05f) zoomFactor = 0.05f;
+        if (zoomFactor > 20.0f) zoomFactor = 20.0f;
+
+        InvalidateRect(hWnd, NULL, FALSE);
+        return 0;
+    }
+
+    case WM_KEYDOWN:
+    {
+        // Use arrow keys to rotate: Left/Up = -5deg, Right/Down = +5deg
+        if (wParam == VK_LEFT || wParam == VK_UP) {
+            rotationAngle -= 5.0f;
+        }
+        else if (wParam == VK_RIGHT || wParam == VK_DOWN) {
+            rotationAngle += 5.0f;
+        }
+        else if (wParam == 'R' || wParam == 0x52) { // R to reset
+            zoomFactor = 1.0f;
+            rotationAngle = 0.0f;
+            translationOffset = PointF(0.0f, 0.0f);
+        }
+
+        // normalize angle
+        if (rotationAngle > 360.0f) rotationAngle -= 360.0f;
+        if (rotationAngle < -360.0f) rotationAngle += 360.0f;
+
         InvalidateRect(hWnd, NULL, FALSE);
         return 0;
     }
@@ -155,9 +187,17 @@ void SvgViewer::render(Graphics& graphics)
     graphics.SetInterpolationMode(InterpolationModeHighQualityBicubic);
     graphics.SetPageUnit(UnitPixel);
     graphics.SetPageScale(1.0f);
+    // Apply transforms: first apply pan (translationOffset), then rotate around
+    // the viewport center, then scale. This keeps rotation centered and zoom
+    // focused on the chosen pivot.
+    PointF center((REAL)screenWidth * 0.5f, (REAL)screenHeight * 0.5f);
+
     graphics.TranslateTransform(translationOffset.X, translationOffset.Y);
-    graphics.ScaleTransform(zoomFactor, zoomFactor);
+    // Move origin to center, rotate, scale, then move origin back
+    graphics.TranslateTransform(center.X, center.Y);
     graphics.RotateTransform(rotationAngle);
+    graphics.ScaleTransform(zoomFactor, zoomFactor);
+    graphics.TranslateTransform(-center.X, -center.Y);
 
     if (document) {
         document->draw(graphics);
@@ -166,16 +206,17 @@ void SvgViewer::render(Graphics& graphics)
 
 void SvgViewer::handleInput()
 {
-    if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
+    // Pan using WASD keys instead of arrow keys (arrow keys now rotate)
+    if (GetAsyncKeyState('A') & 0x8000) {
         translationOffset.X -= 5.0f;
     }
-    if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
+    if (GetAsyncKeyState('D') & 0x8000) {
         translationOffset.X += 5.0f;
     }
-    if (GetAsyncKeyState(VK_UP) & 0x8000) {
+    if (GetAsyncKeyState('W') & 0x8000) {
         translationOffset.Y -= 5.0f;
     }
-    if (GetAsyncKeyState(VK_DOWN) & 0x8000) {
+    if (GetAsyncKeyState('S') & 0x8000) {
         translationOffset.Y += 5.0f;
     }
 }
