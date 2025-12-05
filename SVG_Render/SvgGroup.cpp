@@ -5,16 +5,12 @@ SvgGroup::SvgGroup() {}
 
 SvgGroup::~SvgGroup() {}
 
-SvgGroup::SvgGroup(const SvgGroup& other) {
-	*this = other;
-}
-
 void SvgGroup::addElement(unique_ptr<SvgElement> element) {
 	if (element) {
-		elementsGroup.push_back(element);
+		elements.push_back(move(element));
 	}
 }
 
 void SvgGroup::accept(Renderer& renderer) {
-	renderer.visit(this);
+	// TODO: Implement group rendering logic
 }

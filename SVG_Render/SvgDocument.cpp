@@ -1,5 +1,6 @@
 #include "SvgDocument.h"
 #include "SvgElement.h"
+#include "Renderer.h"
 
 void SvgDocument::addElement(unique_ptr<SvgElement> element)
 {
@@ -7,7 +8,8 @@ void SvgDocument::addElement(unique_ptr<SvgElement> element)
 }
 
 void SvgDocument::draw(Graphics& graphic) {
+    Renderer renderer(graphic);
     for (auto& element : elements) {
-        element->draw(graphic);
+        element->accept(renderer);
     }
 }

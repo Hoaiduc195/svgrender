@@ -155,11 +155,6 @@ void SvgViewer::render(Graphics& graphics)
     graphics.SetInterpolationMode(InterpolationModeHighQualityBicubic);
     graphics.SetPageUnit(UnitPixel);
     graphics.SetPageScale(1.0f);
-
-    //float centerX = screenWidth / 2.0f;
-    //float centerY = screenHeight / 2.0f;
-
-    //graphics.TranslateTransform(centerX, centerY);
     graphics.TranslateTransform(translationOffset.X, translationOffset.Y);
     graphics.ScaleTransform(zoomFactor, zoomFactor);
     graphics.RotateTransform(rotationAngle);

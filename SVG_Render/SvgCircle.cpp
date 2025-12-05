@@ -1,15 +1,10 @@
 #include "SvgCircle.h"
-
+#include "Renderer.h"
 
 SvgCircle::SvgCircle(float centerX, float centerY, float radius) : cx(centerX), cy(centerY), r(radius) {
     cout << "SvgCircle created." << endl;
 }
 
-void SvgCircle::draw(Graphics& graphics){
-    
-    Pen pen(Color(static_cast<BYTE>(strokeOpacity*255), stroke.GetR(), stroke.GetG(), stroke.GetB()), strokeWidth); 
-    SolidBrush brush(Color(static_cast<BYTE>(fillOpacity*255), fill.GetR(), fill.GetG(), fill.GetB())); 
-    
-    graphics.FillEllipse(&brush, cx - r, cy - r, r * 2, r * 2);
-    graphics.DrawEllipse(&pen, cx - r, cy - r, r * 2, r * 2);
+void SvgCircle::accept(Renderer& renderer) {
+    renderer.render(*this);
 }

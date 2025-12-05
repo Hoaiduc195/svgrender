@@ -16,5 +16,5 @@ SvgPath::SvgPath(string& path) {
 SvgPath::~SvgPath() {}
 
 void SvgPath::accept(Renderer& renderer) {
-	renderer.visit(this);
+	// TODO: implement path render logic
 }

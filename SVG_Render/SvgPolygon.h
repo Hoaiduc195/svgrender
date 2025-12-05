@@ -3,6 +3,8 @@
 #include "framework.h"
 #include "Vector2.h"
 
+class Renderer;
+
 class SvgPolygon : public SvgElement {
 private:
 	vector<Vector2> points;
@@ -12,6 +14,8 @@ public:
 	SvgPolygon(const SvgPolygon& other);
 	SvgPolygon(vector<Vector2> pts, bool closed);
 	~SvgPolygon();
-	void draw(Graphics& g) override;
+	void accept(Renderer& renderer) override;
+
+	const vector<Vector2>& getPoints() const { return points; }
 };
 

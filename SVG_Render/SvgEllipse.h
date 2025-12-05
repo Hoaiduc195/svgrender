@@ -2,6 +2,8 @@
 #include "SvgElement.h"
 #include "framework.h"
 
+class Renderer;
+
 
 class SvgEllipse : public SvgElement {
     private:
@@ -11,5 +13,10 @@ class SvgEllipse : public SvgElement {
         float ry;
     public:
         SvgEllipse(float cx, float cy, float rx, float ry);
-        void draw(Graphics& graphics) override;
+        void accept(Renderer& renderer) override;
+
+        float getCx() const { return cx; }
+        float getCy() const { return cy; }
+        float getRx() const { return rx; }
+        float getRy() const { return ry; }
 };

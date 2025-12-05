@@ -3,6 +3,8 @@
 #include "framework.h"
 #include "Vector2.h"
 
+class Renderer;
+
 class SvgPolyline : public SvgElement {
 private:
 	vector<Vector2> points;
@@ -12,5 +14,7 @@ public:
 	SvgPolyline(const SvgPolyline& other);
 	SvgPolyline(vector<Vector2> pts, bool closed);
 	~SvgPolyline();
-	void draw(Graphics& g) override;
+	void accept(Renderer& renderer) override;
+
+	const vector<Vector2>& getPoints() const { return points; }
 };

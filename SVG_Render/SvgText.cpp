@@ -1,6 +1,7 @@
 #include"SvgText.h"
 #include <vector>
 #include <string>
+#include "Renderer.h"
 
 SvgText::~SvgText() {}
 
@@ -22,29 +23,8 @@ SvgText::SvgText(float _x, float _y, float _fontSize, const string& _content) {
 	content = _content;
 }
 
-
-void SvgText::draw(Graphics& g) {
-    StringFormat format; 
-
-    FontFamily fontFamily(L"Times New Roman");
-    Font font(&fontFamily, fontSize, FontStyleRegular, UnitPixel);
-
-    SolidBrush brush(Color(
-        static_cast<BYTE>(fillOpacity * 255),
-        fill.GetR(),
-        fill.GetG(),
-        fill.GetB()
-    ));
-
-    RectF layoutRect(x, y - font.GetHeight(&g), 1000, font.GetHeight(&g));
-    g.DrawString(
-        std::wstring(content.begin(), content.end()).c_str(),
-        -1,
-        &font,
-        layoutRect,
-        &format,
-        &brush
-    );
+void SvgText::accept(Renderer& renderer) {
+    renderer.render(*this);
 }
 
 
