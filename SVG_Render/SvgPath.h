@@ -8,8 +8,11 @@ protected:
 public:
 	SvgPath() = default;
 	SvgPath(const SvgPath& other) = default;
-	~SvgPath();
+	~SvgPath() = default;
 	SvgPath(const string& path);
 	SvgPath& operator=(const SvgPath& other);
 	void accept(Renderer& renderer);
+	
+	// Getter for accessing path data
+	const string& getPathData() const;
 };

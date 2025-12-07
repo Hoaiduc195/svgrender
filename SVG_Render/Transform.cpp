@@ -1,5 +1,5 @@
 #include "Transform.h"
-
+#include <math.h>
 
 Matrix3x3 Matrix3x3::Translate(float dx, float dy){
     return{{
@@ -18,7 +18,7 @@ Matrix3x3 Matrix3x3::Scale(float sx, float sy){
 }
 
 Matrix3x3 Matrix3x3::Rotate(float angle){
-    int theta = angle * (3.1415926535f  / 180.0f);
+    float theta = angle * (3.1415926535f  / 180.0f);
     return{{
         {cos(theta), -sin(theta), 0},
         {sin(theta), cos(theta), 0},
@@ -27,7 +27,7 @@ Matrix3x3 Matrix3x3::Rotate(float angle){
 }
 
 Matrix3x3 Matrix3x3::SkewX(float angle){
-    int theta = angle * (3.1415926535f  / 180.0f);
+    float theta = angle * (3.1415926535f  / 180.0f);
     return{{
         {1, tan(theta), 0},
         {0, 1, 0},
@@ -36,7 +36,7 @@ Matrix3x3 Matrix3x3::SkewX(float angle){
 }
 
 Matrix3x3 Matrix3x3::SkewY(float angle){
-    int theta = angle * (3.1415926535f  / 180.0f);
+    float theta = angle * (3.1415926535f  / 180.0f);
     return{{
         {1, 0, 0},
         {tan(theta), 1, 0},

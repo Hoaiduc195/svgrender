@@ -2,6 +2,7 @@
 #include<vector>
 #include<iostream>
 #include<math.h>
+
 class Matrix3x3{
     public:
         float matrix[3][3];
@@ -19,6 +20,7 @@ class Matrix3x3{
         static Matrix3x3 SkewY(float angle);
         Matrix3x3& operator*=(const Matrix3x3 &other);
 };
+
 class Transform{
     private:
         Matrix3x3 m;

@@ -13,7 +13,8 @@ class SvgCircle : public SvgElement {
         SvgCircle(float centerX, float centerY, float radius);
         void accept(Renderer& renderer) override;
 
-        float getCx() const { return cx; }
-        float getCy() const { return cy; }
-        float getR() const { return r; }
+        // Getters
+        float getCx() const;
+        float getCy() const;
+        float getR() const;
 };

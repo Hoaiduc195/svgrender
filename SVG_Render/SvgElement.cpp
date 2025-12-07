@@ -23,3 +23,25 @@ void SvgElement::setStrokeOpacity(float opacity) {
 void SvgElement::setFillOpacity(float opacity) {
 	fillOpacity = clamp(opacity, 0.0f, 1.0f);
 }
+void SvgElement::setTransform(const Transform& t) {
+	transform = t;
+}
+
+const Color& SvgElement::getFill() const {
+	return fill; 
+}
+const Color& SvgElement::getStroke() const {
+	return stroke; 
+}
+float SvgElement::getStrokeWidth() const {
+	return strokeWidth; 
+}
+float SvgElement::getStrokeOpacity() const {
+	return strokeOpacity; 
+}
+float SvgElement::getFillOpacity() const {
+	return fillOpacity; 
+}
+Transform SvgElement::getTransform() const {
+	return transform; 
+}

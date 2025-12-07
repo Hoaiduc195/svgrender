@@ -16,11 +16,11 @@ class SvgRect : public SvgElement {
         SvgRect(float x, float y, float width, float height, float rx, float ry);
         void accept(Renderer& renderer) override;
 
-        // Getters for renderer
-        float getX() const { return x; }
-        float getY() const { return y; }
-        float getWidth() const { return width; }
-        float getHeight() const { return height; }
-        float getRx() const { return rx; }
-        float getRy() const { return ry; }
+        // Getters
+        float getX() const;
+        float getY() const;
+        float getWidth() const;
+        float getHeight() const;
+        float getRx() const;
+        float getRy() const;
 };

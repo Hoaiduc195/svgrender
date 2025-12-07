@@ -16,6 +16,7 @@ public:
 	~SvgPolygon();
 	void accept(Renderer& renderer) override;
 
-	const vector<Vector2>& getPoints() const { return points; }
+	// Getter
+	const vector<Vector2>& getPoints() const;
 };
 

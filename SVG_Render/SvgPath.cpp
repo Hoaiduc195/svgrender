@@ -1,13 +1,7 @@
 #include"SvgPath.h"
 #include"Renderer.h"
 
-SvgPath::SvgPath() : pathData("") {}
-
-SvgPath::SvgPath(const SvgPath& other) : pathData(other.pathData) {}
-
 SvgPath::SvgPath(const string& path) : pathData(path) {}
-
-SvgPath::~SvgPath() {}
 
 SvgPath& SvgPath::operator=(const SvgPath& other) {
 	if (this != &other) {
@@ -16,6 +10,10 @@ SvgPath& SvgPath::operator=(const SvgPath& other) {
 	return *this;
 }
 
+const string& SvgPath::getPathData() const {
+	return pathData;
+}
+
 void SvgPath::accept(Renderer& renderer) {
-	renderer.visit(this);
+	renderer.render(*this);
 }

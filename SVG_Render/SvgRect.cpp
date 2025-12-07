@@ -5,6 +5,25 @@ SvgRect::SvgRect(float x, float y, float width, float height, float rx, float ry
     cout << "SvgRect created." << endl;
 }
 
+float SvgRect::getX() const {
+    return x; 
+}
+float SvgRect::getY() const {
+    return y; 
+}
+float SvgRect::getWidth() const {
+    return width; 
+}
+float SvgRect::getHeight() const { 
+    return height; 
+}
+float SvgRect::getRx() const { 
+    return rx; 
+}
+float SvgRect::getRy() const { 
+    return ry; 
+}
+
 void SvgRect::accept(Renderer& renderer) {
     renderer.render(*this);
 }

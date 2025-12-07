@@ -22,9 +22,8 @@ public:
     void render(const SvgPolygon& p);
     void render(const SvgPolyline& p);
     void render(const SvgText& t);
-
-	virtual void visit(SvgPath* path) = 0;
-	virtual void visit(SvgGroup* group) = 0;
+    void render(const SvgPath& p);
+    void render(const SvgGroup& g);
     
 private:
     Graphics& g;

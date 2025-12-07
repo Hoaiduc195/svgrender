@@ -18,6 +18,10 @@ SvgPolyline::SvgPolyline(vector<Vector2> pts, bool closed) {
     isClosed = closed;
 }
 
+const vector<Vector2>& SvgPolyline::getPoints() const {
+    return points; 
+}
+
 void SvgPolyline::accept(Renderer& renderer) {
     renderer.render(*this);
 }

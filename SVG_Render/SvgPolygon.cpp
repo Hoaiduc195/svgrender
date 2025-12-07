@@ -18,6 +18,10 @@ SvgPolygon::SvgPolygon(vector<Vector2> pts, bool closed) {
 	isClosed = closed;
 }
 
+const vector<Vector2>& SvgPolygon::getPoints() const {
+	return points; 
+}
+
 void SvgPolygon::accept(Renderer& renderer) {
 	renderer.render(*this);
 }

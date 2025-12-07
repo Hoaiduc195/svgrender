@@ -31,3 +31,17 @@ void SvgText::accept(Renderer& renderer) {
 void SvgText::setFontSize(float size) {
     fontSize = size;
 }
+
+
+float SvgText::getX() const {
+	return x; 
+}
+float SvgText::getY() const { 
+	return y; 
+}
+float SvgText::getFontSize() const {
+	return fontSize; 
+}
+const string& SvgText::getContent() const {
+	return content; 
+}

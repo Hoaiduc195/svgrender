@@ -21,9 +21,9 @@ public:
     // Setter
     void setFontSize(float size);
 
-    // Getters for renderer
-    float getX() const { return x; }
-    float getY() const { return y; }
-    float getFontSize() const { return fontSize; }
-    const string& getContent() const { return content; }
+    // Getters 
+    float getX() const;
+    float getY() const;
+    float getFontSize() const;
+    const string& getContent() const;
 };

@@ -1,6 +1,6 @@
 #pragma once
 #include "framework.h"
-
+#include "Transform.h"
 
 template <typename T>
 T clamp(T value, T minVal, T maxVal) {
@@ -16,6 +16,7 @@ class SvgElement {
         float strokeWidth;
         float strokeOpacity;
         float fillOpacity;
+		Transform transform;
 
     public:
         virtual void accept(Renderer& renderer) = 0;
@@ -28,11 +29,13 @@ class SvgElement {
         void setStrokeWidth(float width);
         void setStrokeOpacity(float opacity);
         void setFillOpacity(float opacity);
+        void setTransform(const Transform& t);
 
         // Getters for renderer
-        const Color& getFill() const { return fill; }
-        const Color& getStroke() const { return stroke; }
-        float getStrokeWidth() const { return strokeWidth; }
-        float getStrokeOpacity() const { return strokeOpacity; }
-        float getFillOpacity() const { return fillOpacity; }
+        const Color& getFill() const;
+        const Color& getStroke() const;
+        float getStrokeWidth() const;
+        float getStrokeOpacity() const;
+        float getFillOpacity() const;
+        Transform getTransform() const;
 };

@@ -13,9 +13,11 @@ class SvgLine : public SvgElement {
     public:
         SvgLine(float x1, float y1, float x2, float y2);
         void accept(Renderer& renderer) override;
+            
 
-        float getX1() const { return x1; }
-        float getY1() const { return y1; }
-        float getX2() const { return x2; }
-        float getY2() const { return y2; }
+        //Getters
+        float getX1() const;
+        float getY1() const;
+        float getX2() const;
+        float getY2() const;
 };

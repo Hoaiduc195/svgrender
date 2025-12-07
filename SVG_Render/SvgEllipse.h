@@ -15,8 +15,9 @@ class SvgEllipse : public SvgElement {
         SvgEllipse(float cx, float cy, float rx, float ry);
         void accept(Renderer& renderer) override;
 
-        float getCx() const { return cx; }
-        float getCy() const { return cy; }
-        float getRx() const { return rx; }
-        float getRy() const { return ry; }
+		// Getters
+        float getCx() const;
+        float getCy() const;
+        float getRx() const;
+        float getRy() const;
 };
