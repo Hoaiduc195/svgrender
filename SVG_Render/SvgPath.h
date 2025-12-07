@@ -6,9 +6,10 @@ class SvgPath : public SvgElement {
 protected:
 	string pathData;
 public:
-	SvgPath();
-	SvgPath(const SvgPath& other);
+	SvgPath() = default;
+	SvgPath(const SvgPath& other) = default;
 	~SvgPath();
-	SvgPath(string& path);
+	SvgPath(const string& path);
+	SvgPath& operator=(const SvgPath& other);
 	void accept(Renderer& renderer);
 };

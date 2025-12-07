@@ -1,20 +1,21 @@
 #include"SvgPath.h"
 #include"Renderer.h"
 
-SvgPath::SvgPath() {
-	pathData = "";
-}
+SvgPath::SvgPath() : pathData("") {}
 
-SvgPath::SvgPath(const SvgPath& other) {
-	*this = other;
-}
+SvgPath::SvgPath(const SvgPath& other) : pathData(other.pathData) {}
 
-SvgPath::SvgPath(string& path) {
-	pathData = path;
-}
+SvgPath::SvgPath(const string& path) : pathData(path) {}
 
 SvgPath::~SvgPath() {}
 
+SvgPath& SvgPath::operator=(const SvgPath& other) {
+	if (this != &other) {
+		pathData = other.pathData;
+	}
+	return *this;
+}
+
 void SvgPath::accept(Renderer& renderer) {
-	// TODO: implement path render logic
+	renderer.visit(this);
 }
