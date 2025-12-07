@@ -8,6 +8,8 @@ protected:
 public:
 	SvgGroup();
 	~SvgGroup();
+	SvgGroup(const SvgGroup& other);
+	SvgGroup& operator=(const SvgGroup& other);
 	void addElement(unique_ptr<SvgElement> element);
 	void accept(Renderer& renderer);
 };
