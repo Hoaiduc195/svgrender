@@ -6,19 +6,44 @@
 #include "SvgPolygon.h"
 #include "SvgPolyline.h"
 #include "SvgText.h"
+#include "Transform.h"
 
 using namespace Gdiplus;
+
+// Helper function to apply transform to graphics context
+static void applyTransform(Graphics& graphics, const Transform& transform) {
+    Matrix3x3 m = transform.getMatrix();
+    // Create GDI+ Matrix from our 3x3 matrix (using only 2x3 affine part)
+    Gdiplus::Matrix gdipMatrix(
+        m.matrix[0][0], m.matrix[0][1],
+        m.matrix[1][0], m.matrix[1][1],
+        m.matrix[0][2], m.matrix[1][2]
+    );
+    graphics.MultiplyTransform(&gdipMatrix);
+}
 
 Renderer::Renderer(Graphics& g) : g(g) {}
 
 void Renderer::render(const SvgRect& r) {
-    Pen pen(Color(static_cast<BYTE>(r.getStrokeOpacity()*255), r.getStroke().GetR(), r.getStroke().GetG(), r.getStroke().GetB()), r.getStrokeWidth());
-    SolidBrush brush(Color(static_cast<BYTE>(r.getFillOpacity()*255), r.getFill().GetR(), r.getFill().GetG(), r.getFill().GetB()));
+    // Save graphics state
+    GraphicsState state = g.Save();
+    
+    // Apply element transform
+    applyTransform(g, r.getTransform());
+    
+    Pen pen(Gdiplus::Color(static_cast<BYTE>(r.getStrokeOpacity()*255), r.getStroke().GetR(), r.getStroke().GetG(), r.getStroke().GetB()), r.getStrokeWidth());
+    SolidBrush brush(Gdiplus::Color(static_cast<BYTE>(r.getFillOpacity()*255), r.getFill().GetR(), r.getFill().GetG(), r.getFill().GetB()));
     g.FillRectangle(&brush, r.getX(), r.getY(), r.getWidth(), r.getHeight());
     g.DrawRectangle(&pen, r.getX(), r.getY(), r.getWidth(), r.getHeight());
+    
+    // Restore graphics state
+    g.Restore(state);
 }
 
 void Renderer::render(const SvgCircle& c) {
+    GraphicsState state = g.Save();
+    applyTransform(g, c.getTransform());
+    
     Pen pen(Color(static_cast<BYTE>(c.getStrokeOpacity()*255), c.getStroke().GetR(), c.getStroke().GetG(), c.getStroke().GetB()), c.getStrokeWidth());
     SolidBrush brush(Color(static_cast<BYTE>(c.getFillOpacity()*255), c.getFill().GetR(), c.getFill().GetG(), c.getFill().GetB()));
     float cx = c.getCx();
@@ -26,23 +51,41 @@ void Renderer::render(const SvgCircle& c) {
     float rrad = c.getR();
     g.FillEllipse(&brush, cx - rrad, cy - rrad, rrad * 2, rrad * 2);
     g.DrawEllipse(&pen, cx - rrad, cy - rrad, rrad * 2, rrad * 2);
+    
+    g.Restore(state);
 }
 
 void Renderer::render(const SvgEllipse& e) {
+    GraphicsState state = g.Save();
+    applyTransform(g, e.getTransform());
+    
     Pen pen(Color(static_cast<BYTE>(e.getStrokeOpacity()*255), e.getStroke().GetR(), e.getStroke().GetG(), e.getStroke().GetB()), e.getStrokeWidth());
     SolidBrush brush(Color(static_cast<BYTE>(e.getFillOpacity()*255), e.getFill().GetR(), e.getFill().GetG(), e.getFill().GetB()));
     g.FillEllipse(&brush, e.getCx() - e.getRx(), e.getCy() - e.getRy(), e.getRx() * 2, e.getRy() * 2);
     g.DrawEllipse(&pen, e.getCx() - e.getRx(), e.getCy() - e.getRy(), e.getRx() * 2, e.getRy() * 2);
+    
+    g.Restore(state);
 }
 
 void Renderer::render(const SvgLine& l) {
+    GraphicsState state = g.Save();
+    applyTransform(g, l.getTransform());
+    
     Pen pen(Color(static_cast<BYTE>(l.getStrokeOpacity()*255), l.getStroke().GetR(), l.getStroke().GetG(), l.getStroke().GetB()), l.getStrokeWidth());
     g.DrawLine(&pen, l.getX1(), l.getY1(), l.getX2(), l.getY2());
+    
+    g.Restore(state);
 }
 
 void Renderer::render(const SvgPolygon& p) {
+    GraphicsState state = g.Save();
+    applyTransform(g, p.getTransform());
+    
     const auto& pts = p.getPoints();
-    if (pts.size() < 2) return;
+    if (pts.size() < 2) {
+        g.Restore(state);
+        return;
+    }
     std::vector<PointF> gdiPoints;
     for (const auto& v : pts) gdiPoints.emplace_back(v.x, v.y);
 
@@ -55,11 +98,19 @@ void Renderer::render(const SvgPolygon& p) {
         Pen pen(Color(static_cast<BYTE>(p.getStrokeOpacity()*255), p.getStroke().GetR(), p.getStroke().GetG(), p.getStroke().GetB()), p.getStrokeWidth());
         g.DrawPolygon(&pen, gdiPoints.data(), (INT)gdiPoints.size());
     }
+    
+    g.Restore(state);
 }
 
 void Renderer::render(const SvgPolyline& p) {
+    GraphicsState state = g.Save();
+    applyTransform(g, p.getTransform());
+    
     const auto& pts = p.getPoints();
-    if (pts.size() < 2) return;
+    if (pts.size() < 2) {
+        g.Restore(state);
+        return;
+    }
     std::vector<PointF> gdiPoints;
     for (const auto& v : pts) gdiPoints.emplace_back(v.x, v.y);
 
@@ -74,9 +125,14 @@ void Renderer::render(const SvgPolyline& p) {
     }
 
     g.DrawLines(&pen, gdiPoints.data(), (INT)gdiPoints.size());
+    
+    g.Restore(state);
 }
 
 void Renderer::render(const SvgText& t) {
+    GraphicsState state = g.Save();
+    applyTransform(g, t.getTransform());
+    
     StringFormat format;
     FontFamily fontFamily(L"Times New Roman");
     Font font(&fontFamily, t.getFontSize(), FontStyleRegular, UnitPixel);
@@ -84,13 +140,21 @@ void Renderer::render(const SvgText& t) {
 
     RectF layoutRect(t.getX(), t.getY() - font.GetHeight(&g), 1000, font.GetHeight(&g));
     g.DrawString(std::wstring(t.getContent().begin(), t.getContent().end()).c_str(), -1, &font, layoutRect, &format, &brush);
+    
+    g.Restore(state);
 }
 
 
 void Renderer::render(const SvgPath& p) {
+    GraphicsState state = g.Save();
+    applyTransform(g, p.getTransform());
+    
     // Parse SVG path data and render using GraphicsPath
     const string& pathData = p.getPathData();
-    if (pathData.empty()) return;
+    if (pathData.empty()) {
+        g.Restore(state);
+        return;
+    }
 
     GraphicsPath path;
     PointF current(0, 0);
@@ -215,10 +279,13 @@ void Renderer::render(const SvgPath& p) {
         Pen pen(Color(static_cast<BYTE>(p.getStrokeOpacity() * 255), p.getStroke().GetR(), p.getStroke().GetG(), p.getStroke().GetB()), p.getStrokeWidth());
         g.DrawPath(&pen, &path);
     }
+    
+    g.Restore(state);
 }
 
 void Renderer::render(const SvgGroup& g) {
     // Render all child elements in the group
+    // Note: Transform is applied by each child element individually
     const auto& elements = g.getElements();
     for (const auto& element : elements) {
         if (element) {

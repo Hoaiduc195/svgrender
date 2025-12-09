@@ -45,18 +45,21 @@ Matrix3x3 Matrix3x3::SkewY(float angle){
 }
 
 Matrix3x3& Matrix3x3::operator*=(const Matrix3x3 &other){
+    float m00 = matrix[0][0], m01 = matrix[0][1], m02 = matrix[0][2];
+    float m10 = matrix[1][0], m11 = matrix[1][1], m12 = matrix[1][2];
+    float m20 = matrix[2][0], m21 = matrix[2][1], m22 = matrix[2][2];
 
-    matrix[0][0] = (matrix[0][0] * other.matrix[0][0]) + (matrix[0][1] * other.matrix[1][0]);
+    matrix[0][0] = (m00 * other.matrix[0][0]) + (m01 * other.matrix[1][0]) + (m02 * other.matrix[2][0]);
+    matrix[0][1] = (m00 * other.matrix[0][1]) + (m01 * other.matrix[1][1]) + (m02 * other.matrix[2][1]);
+    matrix[0][2] = (m00 * other.matrix[0][2]) + (m01 * other.matrix[1][2]) + (m02 * other.matrix[2][2]);
 
-    matrix[1][0] = (matrix[1][0] * other.matrix[0][0]) + (matrix[1][1] * other.matrix[1][0]);
+    matrix[1][0] = (m10 * other.matrix[0][0]) + (m11 * other.matrix[1][0]) + (m12 * other.matrix[2][0]);
+    matrix[1][1] = (m10 * other.matrix[0][1]) + (m11 * other.matrix[1][1]) + (m12 * other.matrix[2][1]);
+    matrix[1][2] = (m10 * other.matrix[0][2]) + (m11 * other.matrix[1][2]) + (m12 * other.matrix[2][2]);
 
-    matrix[0][1] = (matrix[0][0] * other.matrix[0][1]) + (matrix[0][1] * other.matrix[1][1]);
-
-    matrix[1][1] = (matrix[1][0] * other.matrix[0][1]) + (matrix[1][1] * other.matrix[1][1]);
-
-    matrix[0][2] = (matrix[0][0] * other.matrix[0][2]) + (matrix[0][1] * other.matrix[1][2]) + matrix[0][2];
-
-    matrix[1][2] = (matrix[1][0] * other.matrix[0][2]) + (matrix[1][1] * other.matrix[1][2]) + matrix[1][2];
+    matrix[2][0] = (m20 * other.matrix[0][0]) + (m21 * other.matrix[1][0]) + (m22 * other.matrix[2][0]);
+    matrix[2][1] = (m20 * other.matrix[0][1]) + (m21 * other.matrix[1][1]) + (m22 * other.matrix[2][1]);
+    matrix[2][2] = (m20 * other.matrix[0][2]) + (m21 * other.matrix[1][2]) + (m22 * other.matrix[2][2]);
     
     return *this;
 }
@@ -86,21 +89,20 @@ void Transform::skewY(float angle){
 }
 
 void Transform::matrix(float a, float b, float c, float d, float e, float f){
+    // Apply 2D affine transformation matrix multiplication
+    // new matrix = this * [[a, c, e], [b, d, f], [0, 0, 1]]
+    float m00 = m.matrix[0][0], m01 = m.matrix[0][1], m02 = m.matrix[0][2];
+    float m10 = m.matrix[1][0], m11 = m.matrix[1][1], m12 = m.matrix[1][2];
 
-    m.matrix[0][0] = (m.matrix[0][0] * a) + (m.matrix[0][1] * b);
+    m.matrix[0][0] = (m00 * a) + (m01 * b);
+    m.matrix[0][1] = (m00 * c) + (m01 * d);
+    m.matrix[0][2] = (m00 * e) + (m01 * f) + m02;
 
-    m.matrix[1][0] = (m.matrix[1][0] * a) + (m.matrix[1][1] * b);
-
-    m.matrix[0][1] = (m.matrix[0][0] * c) + (m.matrix[0][1] * d);
-
-    m.matrix[1][1] = (m.matrix[1][0] * c) + (m.matrix[1][1] * d);
-
-    m.matrix[0][2] = (m.matrix[0][0] * e) + (m.matrix[0][1] * f) + m.matrix[0][2];
-
-    m.matrix[1][2] = (m.matrix[1][0] * e) + (m.matrix[1][1] * f) + m.matrix[1][2];
-
+    m.matrix[1][0] = (m10 * a) + (m11 * b);
+    m.matrix[1][1] = (m10 * c) + (m11 * d);
+    m.matrix[1][2] = (m10 * e) + (m11 * f) + m12;
 }
 
-Matrix3x3 Transform::getMatrix(){
+Matrix3x3 Transform::getMatrix() const {
     return this->m;
 }

@@ -32,5 +32,5 @@ class Transform{
         void skewX(float angle);
         void skewY(float angle);
         void matrix(float a, float b, float c, float d, float e, float f);
-        Matrix3x3 getMatrix();
+        Matrix3x3 getMatrix() const;
 };
