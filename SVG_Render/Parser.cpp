@@ -75,7 +75,15 @@ static vector<Vector2> parsePoints(const string& pointsStr) {
 
 Color Parser::parseColor(const string& value) {
     if (value.empty() || value == "none") return Color(0, 0, 0, 0);
-
+    // 1. Xu ly mau HEX (eg: #FF0000) 
+    if (value[0] == '#') {
+        unsigned int r = 0, g = 0, b = 0;
+        if (value.length() >= 7) { // #RRGGBB
+            sscanf_s(value.c_str(), "#%02x%02x%02x", &r, &g, &b);
+            return Color(255, r, g, b);
+        }
+    }
+    // 2.Xu ly RGB
     unsigned int r, g, b;
     if (sscanf_s(value.c_str(), "rgb(%d,%d,%d)", &r, &g, &b) == 3)
        return Color(255, r, g, b);
@@ -156,7 +164,10 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         float x = element->FloatAttribute("x", 0);
         float y = element->FloatAttribute("y", 0);
         float fontSize = element->FloatAttribute("font-size", 12.0f);
-        string content = element->GetText();
+
+        const char* txt = element->GetText();
+        string content = txt ? txt : "";
+
         svgObj = make_unique<SvgText>(x, y, fontSize, content);
     }
     if (!svgObj) return nullptr;
@@ -264,7 +275,6 @@ unique_ptr<SvgDocument> Parser::parseSVG(const string& xmlText) {
         cerr << "Not a valid SVG file.\n";
         return nullptr;
     }
-
     parseElement(root, *svgDoc);//duyet cay tu <svg> xuong de them cac doi tuong vo doc
     return svgDoc;
 }
