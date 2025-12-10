@@ -9,6 +9,7 @@ class Parser {
 public:
     static unique_ptr<SvgDocument> parseSVG(const string& xmlText);
 private:
+    static unique_ptr<SvgElement> parseElementRecursive(tinyxml2::XMLElement* element, const SvgElement* parent);
     static void parseElement(tinyxml2::XMLElement* element, SvgDocument& doc);
     static Color parseColor(const string& value);
 };
