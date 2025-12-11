@@ -14,7 +14,6 @@ class SvgLine : public SvgElement {
         SvgLine(float x1, float y1, float x2, float y2);
         void accept(Renderer& renderer) override;
             
-
         //Getters
         float getX1() const;
         float getY1() const;

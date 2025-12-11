@@ -1,4 +1,4 @@
-#include "Renderer.h"
+﻿#include "Renderer.h"
 #include "SvgRect.h"
 #include "SvgCircle.h"
 #include "SvgEllipse.h"
@@ -8,13 +8,11 @@
 #include "SvgText.h"
 #include "Transform.h"
 
-using namespace Gdiplus;
 
 // Helper function to apply transform to graphics context
 static void applyTransform(Graphics& graphics, const Transform& transform) {
     Matrix3x3 m = transform.getMatrix();
-    // Create GDI+ Matrix from our 3x3 matrix (using only 2x3 affine part)
-    Gdiplus::Matrix gdipMatrix(
+    Matrix gdipMatrix(
         m.matrix[0][0], m.matrix[0][1],
         m.matrix[1][0], m.matrix[1][1],
         m.matrix[0][2], m.matrix[1][2]
@@ -25,18 +23,15 @@ static void applyTransform(Graphics& graphics, const Transform& transform) {
 Renderer::Renderer(Graphics& g) : g(g) {}
 
 void Renderer::render(const SvgRect& r) {
-    // Save graphics state
     GraphicsState state = g.Save();
     
-    // Apply element transform
     applyTransform(g, r.getTransform());
     
-    Pen pen(Gdiplus::Color(static_cast<BYTE>(r.getStrokeOpacity()*255), r.getStroke().GetR(), r.getStroke().GetG(), r.getStroke().GetB()), r.getStrokeWidth());
-    SolidBrush brush(Gdiplus::Color(static_cast<BYTE>(r.getFillOpacity()*255), r.getFill().GetR(), r.getFill().GetG(), r.getFill().GetB()));
+    Pen pen(Color(static_cast<BYTE>(r.getStrokeOpacity()*255), r.getStroke().GetR(), r.getStroke().GetG(), r.getStroke().GetB()), r.getStrokeWidth());
+    SolidBrush brush(Color(static_cast<BYTE>(r.getFillOpacity()*255), r.getFill().GetR(), r.getFill().GetG(), r.getFill().GetB()));
     g.FillRectangle(&brush, r.getX(), r.getY(), r.getWidth(), r.getHeight());
     g.DrawRectangle(&pen, r.getX(), r.getY(), r.getWidth(), r.getHeight());
     
-    // Restore graphics state
     g.Restore(state);
 }
 
@@ -132,164 +127,237 @@ void Renderer::render(const SvgPolyline& p) {
 void Renderer::render(const SvgText& t) {
     GraphicsState state = g.Save();
     applyTransform(g, t.getTransform());
-    
-    StringFormat format;
-    FontFamily fontFamily(L"Times New Roman");
-    Font font(&fontFamily, t.getFontSize(), FontStyleRegular, UnitPixel);
-    SolidBrush brush(Color(static_cast<BYTE>(t.getFillOpacity() * 255), t.getFill().GetR(), t.getFill().GetG(), t.getFill().GetB()));
 
-    RectF layoutRect(t.getX(), t.getY() - font.GetHeight(&g), 1000, font.GetHeight(&g));
-    g.DrawString(std::wstring(t.getContent().begin(), t.getContent().end()).c_str(), -1, &font, layoutRect, &format, &brush);
-    
+    FontFamily fontFamily(L"Times New Roman");
+    int fontStyle = FontStyleRegular;
+    float fontSize = t.getFontSize();
+
+    std::wstring wContent(t.getContent().begin(), t.getContent().end());
+
+    GraphicsPath path;
+
+    Font tempFont(&fontFamily, fontSize, fontStyle, UnitPixel);
+    float yPos = t.getY() - tempFont.GetHeight(&g);
+    PointF origin(t.getX(), yPos);
+
+    StringFormat format;
+    path.AddString(
+        wContent.c_str(),
+        -1,
+        &fontFamily,
+        fontStyle,
+        fontSize,
+        origin,
+        &format
+    );
+
+    if (t.getFillOpacity() > 0.0f) {
+        Color fillColor(
+            static_cast<BYTE>(t.getFillOpacity() * 255),
+            t.getFill().GetR(),
+            t.getFill().GetG(),
+            t.getFill().GetB()
+        );
+        SolidBrush brush(fillColor);
+        g.FillPath(&brush, &path);
+    }
+
+    if (t.getStrokeOpacity() > 0.0f && t.getStrokeWidth() > 0.0f) {
+        Color strokeColor(
+            static_cast<BYTE>(t.getStrokeOpacity() * 255),
+            t.getStroke().GetR(),
+            t.getStroke().GetG(),
+            t.getStroke().GetB()
+        );
+        Pen pen(strokeColor, t.getStrokeWidth());
+
+        pen.SetLineJoin(LineJoinRound);
+        g.DrawPath(&pen, &path);
+    }
+
     g.Restore(state);
 }
-
 
 void Renderer::render(const SvgPath& p) {
     GraphicsState state = g.Save();
     applyTransform(g, p.getTransform());
-    
-    // Parse SVG path data and render using GraphicsPath
-    const string& pathData = p.getPathData();
-    if (pathData.empty()) {
+
+    const string& d = p.getPathData();
+    if (d.empty()) {
         g.Restore(state);
         return;
     }
 
     GraphicsPath path;
-    PointF current(0, 0);
-    PointF controlPoint(0, 0);
+    PointF cur(0, 0);
+    PointF start(0, 0);
     bool figureStarted = false;
-
-    // Simple path parser: supports M (moveto), L (lineto), H (horizontal), V (vertical), Z (closepath), C (cubic bezier)
     size_t i = 0;
-    while (i < pathData.size()) {
-        while (i < pathData.size() && (isspace(pathData[i]) || pathData[i] == ',')) i++;
-        if (i >= pathData.size()) break;
+    char cmd = 0;
 
-        char cmd = pathData[i];
-        bool isRelative = (cmd >= 'a' && cmd <= 'z');
-        char absCmd = isRelative ? (char)(cmd - 32) : cmd;
-
-        i++;
-
-        // Parse numbers until next command
-        auto parseNumber = [&]() -> float {
-            while (i < pathData.size() && (isspace(pathData[i]) || pathData[i] == ',')) i++;
-            float num = 0;
-            int sign = 1;
-            if (i < pathData.size() && pathData[i] == '-') { sign = -1; i++; }
-            while (i < pathData.size() && isdigit(pathData[i])) {
-                num = num * 10 + (pathData[i] - '0');
-                i++;
-            }
-            if (i < pathData.size() && pathData[i] == '.') {
-                i++;
-                float decimal = 0.1f;
-                while (i < pathData.size() && isdigit(pathData[i])) {
-                    num += decimal * (pathData[i] - '0');
-                    decimal *= 0.1f;
-                    i++;
-                }
-            }
-            return sign * num;
+    auto skip = [&]() {
+        while (i < d.size() && (isspace(d[i]) || d[i] == ',')) i++;
         };
 
-        switch (absCmd) {
+    auto parseNum = [&]() -> float {
+        skip();
+        bool neg = false;
+        if (i < d.size() && d[i] == '-') {
+            neg = true; i++;
+        }
+        float v = 0;
+        while (i < d.size() && isdigit(d[i])) {
+            v = v * 10 + (d[i] - '0');
+            i++;
+        }
+        if (i < d.size() && d[i] == '.') {
+            i++;
+            float mul = 0.1f;
+            while (i < d.size() && isdigit(d[i])) {
+                v += (d[i] - '0') * mul;
+                mul *= 0.1f;
+                i++;
+            }
+        }
+        return neg ? -v : v;
+        };
+
+    while (i < d.size()) {
+        skip();
+        if (i >= d.size()) break;
+
+        if (isalpha(d[i])) {
+            cmd = d[i++];
+            skip();
+        }
+        else if (cmd == 0) {
+            i++; continue;
+        }
+
+        bool isRelative = islower(cmd);
+        char upperCmd = toupper(cmd);
+
+        switch (upperCmd)
+        {
         case 'M': {
-            // MoveTo
-            float x = parseNumber();
-            float y = parseNumber();
-            if (isRelative) { x += current.X; y += current.Y; }
-            current = PointF(x, y);
-            if (figureStarted) path.CloseFigure();
-            path.StartFigure();
-            figureStarted = true;
-            break;
-        }
-        case 'L': {
-            // LineTo
-            float x = parseNumber();
-            float y = parseNumber();
-            if (isRelative) { x += current.X; y += current.Y; }
-            if (figureStarted) {
-                path.AddLine(current, PointF(x, y));
-            }
-            current = PointF(x, y);
-            break;
-        }
-        case 'H': {
-            // Horizontal LineTo
-            float x = parseNumber();
-            if (isRelative) x += current.X;
-            if (figureStarted) {
-                path.AddLine(current, PointF(x, current.Y));
-            }
-            current = PointF(x, current.Y);
-            break;
-        }
-        case 'V': {
-            // Vertical LineTo
-            float y = parseNumber();
-            if (isRelative) y += current.Y;
-            if (figureStarted) {
-                path.AddLine(current, PointF(current.X, y));
-            }
-            current = PointF(current.X, y);
-            break;
-        }
-        case 'C': {
-            // Cubic Bezier
-            float x1 = parseNumber(), y1 = parseNumber();
-            float x2 = parseNumber(), y2 = parseNumber();
-            float x = parseNumber(), y = parseNumber();
+            float x = parseNum();
+            float y = parseNum();
+
             if (isRelative) {
-                x1 += current.X; y1 += current.Y;
-                x2 += current.X; y2 += current.Y;
-                x += current.X; y += current.Y;
+                x += cur.X;
+                y += cur.Y;
             }
-            if (figureStarted) {
-                path.AddBezier(current, PointF(x1, y1), PointF(x2, y2), PointF(x, y));
-            }
-            controlPoint = PointF(x2, y2);
-            current = PointF(x, y);
+
+            path.StartFigure();
+            cur = PointF(x, y);
+            start = cur;
+            figureStarted = true;
+
+            cmd = isRelative ? 'l' : 'L';
             break;
         }
+
+        case 'L': {
+            float x = parseNum();
+            float y = parseNum();
+
+            if (isRelative) {
+                x += cur.X;
+                y += cur.Y;
+            }
+
+            if (figureStarted) path.AddLine(cur, PointF(x, y));
+            cur = PointF(x, y);
+            break;
+        }
+
+        case 'H': {
+            float x = parseNum();
+            if (isRelative) x += cur.X;
+
+            if (figureStarted) path.AddLine(cur, PointF(x, cur.Y));
+            cur.X = x;
+            break;
+        }
+
+        case 'V': {
+            float y = parseNum();
+            if (isRelative) y += cur.Y;
+
+            if (figureStarted) path.AddLine(cur, PointF(cur.X, y));
+            cur.Y = y;
+            break;
+        }
+
+        case 'C': {
+            float x1 = parseNum(), y1 = parseNum();
+            float x2 = parseNum(), y2 = parseNum();
+            float x = parseNum(), y = parseNum();
+
+            if (isRelative) {
+                x1 += cur.X; y1 += cur.Y;
+                x2 += cur.X; y2 += cur.Y;
+                x += cur.X; y += cur.Y;
+            }
+
+            if (figureStarted)
+                path.AddBezier(cur, PointF(x1, y1), PointF(x2, y2), PointF(x, y));
+
+            cur = PointF(x, y);
+            break;
+        }
+
         case 'Z': {
-            // ClosePath
-            if (figureStarted) path.CloseFigure();
-            figureStarted = false;
+            if (figureStarted) {
+                path.CloseFigure();
+            }
+            cur = start;
             break;
         }
+
         default:
-            // Unknown command, skip next number
-            parseNumber();
+            i++;
             break;
         }
     }
 
-    if (figureStarted) path.CloseFigure();
-
-    // Render the path
-    if (p.getFillOpacity() > 0.0f) {
-        SolidBrush brush(Color(static_cast<BYTE>(p.getFillOpacity() * 255), p.getFill().GetR(), p.getFill().GetG(), p.getFill().GetB()));
+    if (p.getFillOpacity() > 0.f) {
+        Color color(
+            (BYTE)(p.getFillOpacity() * 255),
+            p.getFill().GetR(),
+            p.getFill().GetG(),
+            p.getFill().GetB()
+        );
+        SolidBrush brush(color);
         g.FillPath(&brush, &path);
     }
-    if (p.getStrokeOpacity() > 0.0f && p.getStrokeWidth() > 0) {
-        Pen pen(Color(static_cast<BYTE>(p.getStrokeOpacity() * 255), p.getStroke().GetR(), p.getStroke().GetG(), p.getStroke().GetB()), p.getStrokeWidth());
+
+    if (p.getStrokeOpacity() > 0.f && p.getStrokeWidth() > 0.f) {
+        Color color(
+            (BYTE)(p.getStrokeOpacity() * 255),
+            p.getStroke().GetR(),
+            p.getStroke().GetG(),
+            p.getStroke().GetB()
+        );
+        Pen pen(color, p.getStrokeWidth());
         g.DrawPath(&pen, &path);
     }
-    
+
     g.Restore(state);
 }
 
-void Renderer::render(const SvgGroup& g) {
-    // Render all child elements in the group
-    // Note: Transform is applied by each child element individually
-    const auto& elements = g.getElements();
+
+void Renderer::render(const SvgGroup& grp) {
+    GraphicsState state = g.Save();
+
+    applyTransform(g, grp.getTransform());
+
+    const auto& elements = grp.getElements();
     for (const auto& element : elements) {
         if (element) {
             element->accept(*this);
         }
     }
+
+    g.Restore(state);
 }

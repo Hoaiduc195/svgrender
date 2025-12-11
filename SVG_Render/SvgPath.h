@@ -13,6 +13,6 @@ public:
 	SvgPath& operator=(const SvgPath& other);
 	void accept(Renderer& renderer);
 	
-	// Getter for accessing path data
+	// Getter 
 	const string& getPathData() const;
 };

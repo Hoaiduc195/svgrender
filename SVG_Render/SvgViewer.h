@@ -16,6 +16,8 @@ private:
     float zoomFactor;
     float rotationAngle;
     PointF translationOffset;
+    bool isDragging;
+    POINT lastMousePos;
 
 public:
     SvgViewer();

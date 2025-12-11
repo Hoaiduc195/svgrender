@@ -5,7 +5,6 @@
 #include <windowsx.h>
 #include <commctrl.h>
 
-
 LRESULT CALLBACK GlobalWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     SvgViewer* pViewer = nullptr;
@@ -39,11 +38,15 @@ SvgViewer::SvgViewer()
     zoomFactor = 1.0f;
     rotationAngle = 0.0f;
     translationOffset = PointF(0.0f, 0.0f);
+
+    isDragging = false;
+    lastMousePos = { 0, 0 };
 }
 
 SvgViewer::~SvgViewer()
 {
 }
+
 void SvgViewer::run()
 {
     GdiplusStartupInput gdiplusStartupInput;
@@ -75,7 +78,7 @@ void SvgViewer::run()
     }
 
     ShowWindow(m_hWnd, SW_SHOW);
-    UpdateWindow(m_hWnd); 
+    UpdateWindow(m_hWnd);
 
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0) > 0)
@@ -90,6 +93,46 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 {
     switch (message)
     {
+    case WM_LBUTTONDOWN:
+    {
+        isDragging = true;
+        lastMousePos.x = GET_X_LPARAM(lParam);
+        lastMousePos.y = GET_Y_LPARAM(lParam);
+        SetCapture(hWnd);
+        return 0;
+    }
+
+    case WM_MOUSEMOVE:
+    {
+        if (isDragging)
+        {
+            int x = GET_X_LPARAM(lParam);
+            int y = GET_Y_LPARAM(lParam);
+
+            float dx = (float)(x - lastMousePos.x);
+            float dy = (float)(y - lastMousePos.y);
+
+            translationOffset.X += dx;
+            translationOffset.Y += dy;
+
+            lastMousePos.x = x;
+            lastMousePos.y = y;
+
+            InvalidateRect(hWnd, NULL, FALSE);
+        }
+        return 0;
+    }
+
+    case WM_LBUTTONUP:
+    {
+        if (isDragging)
+        {
+            isDragging = false;
+            ReleaseCapture();
+        }
+        return 0;
+    }
+
     case WM_ERASEBKGND:
         return 1;
     case WM_PAINT:
@@ -125,15 +168,31 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
     {
         float zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 
-        // Zoom at the center of the viewport only
-        if (zDelta > 0)
-            zoomFactor *= 1.1f;
-        else
-            zoomFactor *= 0.9f;
+        float scaleRatio = (zDelta > 0) ? 1.1f : 0.9f;
 
-        // Clamp zoom
-        if (zoomFactor < 0.05f) zoomFactor = 0.05f;
-        if (zoomFactor > 20.0f) zoomFactor = 20.0f;
+        float oldZoom = zoomFactor;
+        float newZoom = oldZoom * scaleRatio;
+
+        if (newZoom < 0.05f) newZoom = 0.05f;
+        if (newZoom > 20.0f) newZoom = 20.0f;
+
+        float effectiveRatio = newZoom / oldZoom;
+
+        POINT pt;
+        pt.x = GET_X_LPARAM(lParam);
+        pt.y = GET_Y_LPARAM(lParam);
+
+        ScreenToClient(hWnd, &pt);
+
+        float centerX = (float)screenWidth * 0.5f;
+        float centerY = (float)screenHeight * 0.5f;
+
+        float vectorX = (float)pt.x - centerX - translationOffset.X;
+        float vectorY = (float)pt.y - centerY - translationOffset.Y;
+
+        translationOffset.X += vectorX * (1.0f - effectiveRatio);
+        translationOffset.Y += vectorY * (1.0f - effectiveRatio);
+        zoomFactor = newZoom;
 
         InvalidateRect(hWnd, NULL, FALSE);
         return 0;
@@ -141,20 +200,18 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
     case WM_KEYDOWN:
     {
-        // Use arrow keys to rotate: Left/Up = -5deg, Right/Down = +5deg
         if (wParam == VK_LEFT || wParam == VK_UP) {
             rotationAngle -= 5.0f;
         }
         else if (wParam == VK_RIGHT || wParam == VK_DOWN) {
             rotationAngle += 5.0f;
         }
-        else if (wParam == 'R' || wParam == 0x52) { // R to reset
+        else if (wParam == 'R' || wParam == 0x52) {
             zoomFactor = 1.0f;
             rotationAngle = 0.0f;
             translationOffset = PointF(0.0f, 0.0f);
         }
 
-        // normalize angle
         if (rotationAngle > 360.0f) rotationAngle -= 360.0f;
         if (rotationAngle < -360.0f) rotationAngle += 360.0f;
 
@@ -187,13 +244,9 @@ void SvgViewer::render(Graphics& graphics)
     graphics.SetInterpolationMode(InterpolationModeHighQualityBicubic);
     graphics.SetPageUnit(UnitPixel);
     graphics.SetPageScale(1.0f);
-    // Apply transforms: first apply pan (translationOffset), then rotate around
-    // the viewport center, then scale. This keeps rotation centered and zoom
-    // focused on the chosen pivot.
     PointF center((REAL)screenWidth * 0.5f, (REAL)screenHeight * 0.5f);
 
     graphics.TranslateTransform(translationOffset.X, translationOffset.Y);
-    // Move origin to center, rotate, scale, then move origin back
     graphics.TranslateTransform(center.X, center.Y);
     graphics.RotateTransform(rotationAngle);
     graphics.ScaleTransform(zoomFactor, zoomFactor);
@@ -206,7 +259,6 @@ void SvgViewer::render(Graphics& graphics)
 
 void SvgViewer::handleInput()
 {
-    // Pan using WASD keys instead of arrow keys (arrow keys now rotate)
     if (GetAsyncKeyState('A') & 0x8000) {
         translationOffset.X -= 5.0f;
     }
