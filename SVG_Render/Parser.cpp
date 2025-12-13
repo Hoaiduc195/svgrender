@@ -70,7 +70,10 @@ static vector<Vector2> parsePoints(const string& pointsStr) {
 Color Parser::parseColor(const string& value) {
     if (value.empty() || value == "none") return Color(0, 0, 0, 0);
 
-    // 1. Xu ly mau HEX
+    //1.value kieu url
+    if (value.find("url(") != string::npos) return Color::Black;
+
+    // 2. Xu ly mau HEX
     if (value[0] == '#') {
         unsigned int r = 0, g = 0, b = 0;
 
@@ -107,10 +110,55 @@ Color Parser::parseColor(const string& value) {
     return Color::Black;
 }
 
-unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* element, const SvgElement* parent) {
-    if (!element) return nullptr;
+LinearGradient Parser::parseLinearGradient(tinyxml2::XMLElement* elem) {
+    LinearGradient grad;
+    grad.id = elem->Attribute("id") ? elem->Attribute("id") : "";
+    grad.x1 = elem->FloatAttribute("x1", 0);
+    grad.y1 = elem->FloatAttribute("y1", 0);
+    grad.x2 = elem->FloatAttribute("x2", 100);
+    grad.y2 = elem->FloatAttribute("y2", 0);
 
+    tinyxml2::XMLElement* child = elem->FirstChildElement();
+    while (child) {
+        if (string(child->Name()) == "stop") {
+            GradientStop stop;
+            stop.offset = child->FloatAttribute("offset", 0);
+            const char* colorAttr = child->Attribute("stop-color");
+            stop.color = colorAttr ? Parser::parseColor(colorAttr) : Color::Black;
+            grad.stops.push_back(stop);
+        }
+        child = child->NextSiblingElement();
+    }
+    return grad;
+}
+
+unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* element, const SvgElement* parent,
+    std::map<string, LinearGradient>& declaredGradients) {
+    if (!element) return nullptr;
     string tag = element->Name();
+
+    // 1. Xử ly container chua dinh nghia (defs)
+    if (tag == "defs") {
+        tinyxml2::XMLElement* child = element->FirstChildElement();
+        while (child) {
+            if (string(child->Name()) == "linearGradient") {
+                LinearGradient grad = parseLinearGradient(child);
+                if (!grad.id.empty()) {
+                    declaredGradients[grad.id] = grad;
+                }
+            }
+            child = child->NextSiblingElement();
+        }
+        return nullptr; // Defs không hiển thị gì cả
+    }
+
+    // 2. Xu ly Linear Gradient ngoai defs (neu co)
+    if (tag == "linearGradient") {
+        LinearGradient grad = parseLinearGradient(element);
+        if (!grad.id.empty()) declaredGradients[grad.id] = grad;
+        return nullptr;
+    }
+
     unique_ptr<SvgElement> svgObj = nullptr;
     if (tag == "g") {
         auto group = make_unique<SvgGroup>();
@@ -169,6 +217,11 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     else if (tag == "text") {
         float x = element->FloatAttribute("x", 0);
         float y = element->FloatAttribute("y", 0);
+        float dx = element->FloatAttribute("dx", 0);
+        float dy = element->FloatAttribute("dy", 0);
+        //cong don do lech
+        x += dx;
+        y += dy;
         float fontSize = element->FloatAttribute("font-size", 12.0f);
 
         const char* txt = element->GetText();
@@ -178,28 +231,46 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     }
     if (!svgObj) return nullptr;
 
-    // --- XU LY THUOC TINH ---
-
-    //Fill
-    bool isFillNone = false; // Flag de tranh ke thua opacity
+    // --- Xu ly thuoc tinh fill co gradient ---
+    bool isFillNone = false;
     const char* fillAttr = element->Attribute("fill");
 
     if (fillAttr) {
-        svgObj->setFill(parseColor(fillAttr));
-        if (string(fillAttr) == "none") {
-            svgObj->setFillOpacity(0.0f);
-            isFillNone = true;
+        string fillStr = fillAttr;
+        // TH1: Là Gradient url(#id)
+        if (fillStr.find("url(#") != string::npos) {
+            size_t start = fillStr.find("#") + 1;
+            size_t end = fillStr.find(")");
+            string id = fillStr.substr(start, end - start);
+
+            if (declaredGradients.find(id) != declaredGradients.end()) {
+                svgObj->setGradient(declaredGradients[id]);
+            }
+        }
+        // TH2: Là màu đơn sắc (Hex, RGB, Name)
+        else {
+            svgObj->setFill(parseColor(fillAttr));
+            if (fillStr == "none") {
+                svgObj->setFillOpacity(0.0f);
+                isFillNone = true;
+            }
         }
     }
+    // TH3: Kế thừa từ cha
     else if (parent) {
-        svgObj->setFill(parent->getFill());
+        if (parent->isGradient()) {
+            svgObj->setGradient(parent->getGradient());
+        }
+        else {
+            svgObj->setFill(parent->getFill());
+        }
     }
 
-    // Fill Opacity
+    // 2. Fill Opacity
     if (element->Attribute("fill-opacity")) {
         svgObj->setFillOpacity(element->FloatAttribute("fill-opacity"));
     }
-    else if (parent && !isFillNone) { // Chi ke thua neu khong phai la none
+    else if (parent && !isFillNone) {
         svgObj->setFillOpacity(parent->getFillOpacity());
     }
 
@@ -248,8 +319,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         SvgGroup* groupPtr = static_cast<SvgGroup*>(svgObj.get());
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
-            // Truyền `groupPtr` xuống làm `parent` cho các con
-            auto childObj = parseElementRecursive(child, groupPtr);
+            auto childObj = parseElementRecursive(child, groupPtr, declaredGradients); // Truyen map xuong
             if (childObj) {
                 groupPtr->addElement(move(childObj));
             }
@@ -261,11 +331,12 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
 
 void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     SvgGroup defaultContext;
+    std::map<string, LinearGradient> gradients; //map tam de luu gradient trong qua trinh parse
     if (string(element->Name()) == "svg") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
             // Truyền defaultContext vào làm cha
-            auto obj = parseElementRecursive(child, &defaultContext);
+            auto obj = parseElementRecursive(child, &defaultContext, gradients);
             if (obj) {
                 doc.addElement(move(obj));
             }
@@ -274,7 +345,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     }
     else {
         // Trường hợp file SVG không có thẻ <svg> bao ngoài (ít gặp)
-        auto obj = parseElementRecursive(element, &defaultContext);
+        auto obj = parseElementRecursive(element, &defaultContext, gradients);
         if (obj) {
             doc.addElement(move(obj));
         }

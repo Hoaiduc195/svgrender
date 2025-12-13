@@ -10,6 +10,45 @@
 
 
 // Helper function to apply transform to graphics context
+Brush* createBrush(const SvgElement& element) {
+    if (element.getFillOpacity() <= 0.0f && !element.isGradient()) {
+        return nullptr;
+    }
+
+    if (element.isGradient()) {
+        const LinearGradient& grad = element.getGradient();
+        PointF p1(grad.x1, grad.y1);
+        PointF p2(grad.x2, grad.y2);
+
+        // GDI+ LinearGradientBrush
+        LinearGradientBrush* brush = new LinearGradientBrush(p1, p2, Color::Black, Color::White);
+
+        // Tạo mảng màu và vị trí cho Multistop gradient
+        int count = grad.stops.size();
+        if (count > 0) {
+            std::vector<Color> colors(count);
+            std::vector<REAL> positions(count);
+
+            for (int i = 0; i < count; ++i) {
+                colors[i] = grad.stops[i].color;
+                positions[i] = static_cast<REAL>(grad.stops[i].offset);
+            }
+            // GDI+ yêu cầu vị trí đầu phải là 0.0 và cuối phải là 1.0
+            // Nếu SVG không chuẩn, brush có thể bị lỗi, nhưng ta cứ set:
+            brush->SetInterpolationColors(colors.data(), positions.data(), count);
+        }
+        return brush;
+    }
+    else {
+        return new SolidBrush(Color(
+            static_cast<BYTE>(element.getFillOpacity() * 255),
+            element.getFill().GetR(),
+            element.getFill().GetG(),
+            element.getFill().GetB()
+        ));
+    }
+}
+
 static void applyTransform(Graphics& graphics, const Transform& transform) {
     Matrix3x3 m = transform.getMatrix();
     Matrix gdipMatrix(
@@ -24,13 +63,20 @@ Renderer::Renderer(Graphics& g) : g(g) {}
 
 void Renderer::render(const SvgRect& r) {
     GraphicsState state = g.Save();
-    
     applyTransform(g, r.getTransform());
     
     Pen pen(Color(static_cast<BYTE>(r.getStrokeOpacity()*255), r.getStroke().GetR(), r.getStroke().GetG(), r.getStroke().GetB()), r.getStrokeWidth());
-    SolidBrush brush(Color(static_cast<BYTE>(r.getFillOpacity()*255), r.getFill().GetR(), r.getFill().GetG(), r.getFill().GetB()));
-    g.FillRectangle(&brush, r.getX(), r.getY(), r.getWidth(), r.getHeight());
-    g.DrawRectangle(&pen, r.getX(), r.getY(), r.getWidth(), r.getHeight());
+
+    Brush* brush = createBrush(r);
+    if (brush) {
+        g.FillRectangle(brush, r.getX(), r.getY(), r.getWidth(), r.getHeight());
+        delete brush; //xoa sau khi dung
+    }
+
+    if (r.getStrokeOpacity() > 0 && r.getStrokeWidth() > 0) {
+        g.DrawRectangle(&pen, r.getX(), r.getY(), r.getWidth(), r.getHeight());
+    }
+    
     
     g.Restore(state);
 }
@@ -40,12 +86,19 @@ void Renderer::render(const SvgCircle& c) {
     applyTransform(g, c.getTransform());
     
     Pen pen(Color(static_cast<BYTE>(c.getStrokeOpacity()*255), c.getStroke().GetR(), c.getStroke().GetG(), c.getStroke().GetB()), c.getStrokeWidth());
-    SolidBrush brush(Color(static_cast<BYTE>(c.getFillOpacity()*255), c.getFill().GetR(), c.getFill().GetG(), c.getFill().GetB()));
+    Brush* brush = createBrush(c);
     float cx = c.getCx();
     float cy = c.getCy();
     float rrad = c.getR();
-    g.FillEllipse(&brush, cx - rrad, cy - rrad, rrad * 2, rrad * 2);
-    g.DrawEllipse(&pen, cx - rrad, cy - rrad, rrad * 2, rrad * 2);
+
+    if (brush) {
+        g.FillEllipse(brush, cx - rrad, cy - rrad, rrad * 2, rrad * 2);
+        delete brush; 
+    }
+
+    if (c.getStrokeOpacity() > 0 && c.getStrokeWidth() > 0) {
+        g.DrawEllipse(&pen, cx - rrad, cy - rrad, rrad * 2, rrad * 2);
+    }
     
     g.Restore(state);
 }
@@ -55,9 +108,20 @@ void Renderer::render(const SvgEllipse& e) {
     applyTransform(g, e.getTransform());
     
     Pen pen(Color(static_cast<BYTE>(e.getStrokeOpacity()*255), e.getStroke().GetR(), e.getStroke().GetG(), e.getStroke().GetB()), e.getStrokeWidth());
-    SolidBrush brush(Color(static_cast<BYTE>(e.getFillOpacity()*255), e.getFill().GetR(), e.getFill().GetG(), e.getFill().GetB()));
-    g.FillEllipse(&brush, e.getCx() - e.getRx(), e.getCy() - e.getRy(), e.getRx() * 2, e.getRy() * 2);
-    g.DrawEllipse(&pen, e.getCx() - e.getRx(), e.getCy() - e.getRy(), e.getRx() * 2, e.getRy() * 2);
+    Brush* brush = createBrush(e);
+    float x = e.getCx() - e.getRx();
+    float y = e.getCy() - e.getRy();
+    float w = e.getRx() * 2;
+    float h = e.getRy() * 2;
+
+    if (brush) {
+        g.FillEllipse(brush, x, y, w, h);
+        delete brush;
+    }
+
+    if (e.getStrokeOpacity() > 0 && e.getStrokeWidth() > 0) {
+        g.DrawEllipse(&pen, x, y, w, h);
+    }
     
     g.Restore(state);
 }
@@ -84,9 +148,10 @@ void Renderer::render(const SvgPolygon& p) {
     std::vector<PointF> gdiPoints;
     for (const auto& v : pts) gdiPoints.emplace_back(v.x, v.y);
 
-    if (p.getFillOpacity() > 0) {
-        SolidBrush brush(Color(static_cast<BYTE>(p.getFillOpacity()*255), p.getFill().GetR(), p.getFill().GetG(), p.getFill().GetB()));
-        g.FillPolygon(&brush, gdiPoints.data(), (INT)gdiPoints.size(), FillModeAlternate);
+    Brush* brush = createBrush(p);
+    if (brush) {
+        g.FillPolygon(brush, gdiPoints.data(), (INT)gdiPoints.size(), FillModeAlternate);
+        delete brush;
     }
 
     if (p.getStrokeOpacity() > 0 && p.getStrokeWidth() > 0) {
@@ -114,12 +179,15 @@ void Renderer::render(const SvgPolyline& p) {
     pen.SetStartCap(LineCapFlat);
     pen.SetEndCap(LineCapFlat);
 
-    if (p.getFillOpacity() > 0.0f) {
-        SolidBrush brush(Color(static_cast<BYTE>(p.getFillOpacity()*255), p.getFill().GetR(), p.getFill().GetG(), p.getFill().GetB()));
-        g.FillPolygon(&brush, gdiPoints.data(), (INT)gdiPoints.size(), FillModeAlternate);
+    Brush* brush = createBrush(p);
+    if (brush) {
+        g.FillPolygon(brush, gdiPoints.data(), (INT)gdiPoints.size(), FillModeAlternate);
+        delete brush;
     }
 
-    g.DrawLines(&pen, gdiPoints.data(), (INT)gdiPoints.size());
+    if (p.getStrokeOpacity() > 0 && p.getStrokeWidth() > 0) {
+        g.DrawLines(&pen, gdiPoints.data(), (INT)gdiPoints.size());
+    }
     
     g.Restore(state);
 }
@@ -151,15 +219,10 @@ void Renderer::render(const SvgText& t) {
         &format
     );
 
-    if (t.getFillOpacity() > 0.0f) {
-        Color fillColor(
-            static_cast<BYTE>(t.getFillOpacity() * 255),
-            t.getFill().GetR(),
-            t.getFill().GetG(),
-            t.getFill().GetB()
-        );
-        SolidBrush brush(fillColor);
-        g.FillPath(&brush, &path);
+    Brush* brush = createBrush(t);
+    if (brush) {
+        g.FillPath(brush, &path);
+        delete brush;
     }
 
     if (t.getStrokeOpacity() > 0.0f && t.getStrokeWidth() > 0.0f) {
@@ -321,15 +384,10 @@ void Renderer::render(const SvgPath& p) {
         }
     }
 
-    if (p.getFillOpacity() > 0.f) {
-        Color color(
-            (BYTE)(p.getFillOpacity() * 255),
-            p.getFill().GetR(),
-            p.getFill().GetG(),
-            p.getFill().GetB()
-        );
-        SolidBrush brush(color);
-        g.FillPath(&brush, &path);
+    Brush* brush = createBrush(p);
+    if (brush) {
+        g.FillPath(brush, &path);
+        delete brush;
     }
 
     if (p.getStrokeOpacity() > 0.f && p.getStrokeWidth() > 0.f) {

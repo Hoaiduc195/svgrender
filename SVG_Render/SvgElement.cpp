@@ -26,7 +26,10 @@ void SvgElement::setFillOpacity(float opacity) {
 void SvgElement::setTransform(const Transform& t) {
 	transform = t;
 }
-
+void SvgElement::setGradient(const LinearGradient& grad) {
+	gradient = grad;
+	hasGradient = true;
+}
 const Color& SvgElement::getFill() const {
 	return fill; 
 }
@@ -44,4 +47,10 @@ float SvgElement::getFillOpacity() const {
 }
 Transform SvgElement::getTransform() const {
 	return transform; 
+}
+bool SvgElement::isGradient() const { 
+	return hasGradient; 
+}
+const LinearGradient& SvgElement::getGradient() const {
+	return gradient; 
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "framework.h"
 #include "Transform.h"
+#include "SvgGradient.h"
 
 template <typename T>
 T clamp(T value, T minVal, T maxVal) {
@@ -17,7 +18,8 @@ class SvgElement {
         float strokeOpacity;
         float fillOpacity;
 		Transform transform;
-
+        bool hasGradient = false;
+        LinearGradient gradient;
     public:
         virtual void accept(Renderer& renderer) = 0;
         virtual ~SvgElement() = default;
@@ -30,6 +32,7 @@ class SvgElement {
         void setStrokeOpacity(float opacity);
         void setFillOpacity(float opacity);
         void setTransform(const Transform& t);
+        void setGradient(const LinearGradient& grad);
 
         // Getters for renderer
         const Color& getFill() const;
@@ -38,4 +41,6 @@ class SvgElement {
         float getStrokeOpacity() const;
         float getFillOpacity() const;
         Transform getTransform() const;
+        bool isGradient() const;
+        const LinearGradient& getGradient() const;
 };
