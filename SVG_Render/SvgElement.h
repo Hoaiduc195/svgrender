@@ -1,7 +1,7 @@
 #pragma once
 #include "framework.h"
 #include "Transform.h"
-#include "SvgGradient.h"
+#include "Color.h"
 
 template <typename T>
 T clamp(T value, T minVal, T maxVal) {
