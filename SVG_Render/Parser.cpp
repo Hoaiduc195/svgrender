@@ -309,6 +309,15 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         parseTransformAttribute(transformAttr, svgObj.get());
     }
 
+    // Text Anchor (only for text elements)
+    if (tag == "text") {
+        const char* textAnchorAttr = element->Attribute("text-anchor");
+        if (textAnchorAttr) {
+            SvgText* textPtr = static_cast<SvgText*>(svgObj.get());
+            textPtr->setTextAnchor(textAnchorAttr);
+        }
+    }
+
     //Neu la group, tiep tuc de quy
     if (tag == "g") {
         SvgGroup* groupPtr = static_cast<SvgGroup*>(svgObj.get());

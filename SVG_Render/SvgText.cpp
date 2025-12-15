@@ -10,6 +10,7 @@ SvgText::SvgText() {
 	y = 0.0f;
 	content = "";
 	fontSize = 12.0f;
+	textAnchor = "start";
 }
 
 SvgText::SvgText(const SvgText& other) {
@@ -21,6 +22,7 @@ SvgText::SvgText(float _x, float _y, float _fontSize, const string& _content) {
 	y = _y;
 	fontSize = _fontSize;
 	content = _content;
+	textAnchor = "start";
 }
 
 void SvgText::accept(Renderer& renderer) {
@@ -32,6 +34,9 @@ void SvgText::setFontSize(float size) {
     fontSize = size;
 }
 
+void SvgText::setTextAnchor(const string& anchor) {
+    textAnchor = anchor;
+}
 
 float SvgText::getX() const {
 	return x; 
@@ -44,4 +49,7 @@ float SvgText::getFontSize() const {
 }
 const string& SvgText::getContent() const {
 	return content; 
+}
+const string& SvgText::getTextAnchor() const {
+	return textAnchor; 
 }

@@ -9,6 +9,7 @@ private:
     float x, y;         
     float fontSize;    
     string content;  
+    string textAnchor;
 
 
 public:
@@ -19,12 +20,14 @@ public:
 
     void accept(Renderer& renderer) override;
 
-    // Setter
+    // Setters
     void setFontSize(float size);
+    void setTextAnchor(const string& anchor);
 
     // Getters 
     float getX() const;
     float getY() const;
     float getFontSize() const;
     const string& getContent() const;
+    const string& getTextAnchor() const;
 };

@@ -206,7 +206,26 @@ void Renderer::render(const SvgText& t) {
 
     Font tempFont(&fontFamily, fontSize, fontStyle, UnitPixel);
     float yPos = t.getY() - tempFont.GetHeight(&g);
-    PointF origin(t.getX(), yPos);
+    
+    // Adjust x position based on text-anchor attribute
+    float xPos = t.getX();
+    string textAnchor = t.getTextAnchor();
+    if (textAnchor == "middle" || textAnchor == "end") {
+        // Measure text width
+        RectF boundingBox;
+        StringFormat format;
+        g.MeasureString(wContent.c_str(), -1, &tempFont, PointF(0, 0), &format, &boundingBox);
+        float textWidth = boundingBox.Width;
+        
+        if (textAnchor == "middle") {
+            xPos -= textWidth / 2.0f;
+        }
+        else if (textAnchor == "end") {
+            xPos -= textWidth;
+        }
+    }
+    
+    PointF origin(xPos, yPos);
 
     StringFormat format;
     path.AddString(
