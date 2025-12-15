@@ -16,6 +16,7 @@ public:
     SvgText();
     SvgText(const SvgText& other);
     SvgText(float _x, float _y, float _fontSize, const string& _content);
+	SvgText(float _x, float _y, float _fontSize, const string& _content, const string& _textAnchor);
     ~SvgText();
 
     void accept(Renderer& renderer) override;

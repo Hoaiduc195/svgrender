@@ -25,6 +25,14 @@ SvgText::SvgText(float _x, float _y, float _fontSize, const string& _content) {
 	textAnchor = "start";
 }
 
+SvgText::SvgText(float _x, float _y, float _fontSize, const string& _content, const string& _textAnchor) {
+	x = _x;
+	y = _y;
+	fontSize = _fontSize;
+	content = _content;
+	textAnchor = _textAnchor;
+}
+
 void SvgText::accept(Renderer& renderer) {
     renderer.render(*this);
 }
