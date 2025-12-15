@@ -106,7 +106,7 @@ Color Parser::parseColor(const string& value) {
     if (value == "black") return Color::Black;
     if (value == "yellow") return Color::Yellow;
     if (value == "white") return Color::White;
-
+    
     return Color::Black;
 }
 

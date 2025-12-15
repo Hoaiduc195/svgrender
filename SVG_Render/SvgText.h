@@ -8,7 +8,8 @@ class SvgText : public SvgElement {
 private:
     float x, y;         
     float fontSize;    
-    string content;     
+    string content;  
+
 
 public:
     SvgText();
