@@ -144,7 +144,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
             }
             child = child->NextSiblingElement();
         }
-        return nullptr; // Defs không hiển thị gì cả
+        return nullptr; // defs kh hien thi gi ca
     }
 
     // 2. Xu ly Linear Gradient ngoai defs (neu co)
@@ -226,13 +226,13 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     }
     if (!svgObj) return nullptr;
 
-    // --- Xu ly thuoc tinh fill co gradient ---
+    // Xu ly thuoc tinh fill co gradient ---
     bool isFillNone = false;
     const char* fillAttr = element->Attribute("fill");
 
     if (fillAttr) {
         string fillStr = fillAttr;
-        // TH1: Là Gradient url(#id)
+        // TH1: La gradien url(#id)
         if (fillStr.find("url(#") != string::npos) {
             size_t start = fillStr.find("#") + 1;
             size_t end = fillStr.find(")");
@@ -242,7 +242,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
                 svgObj->setGradient(declaredGradients[id]);
             }
         }
-        // TH2: Là màu đơn sắc (Hex, RGB, Name)
+        // TH2: La don sac (Hex, RGB, name)
         else {
             svgObj->setFill(parseColor(fillAttr));
             if (fillStr == "none") {
@@ -251,7 +251,6 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
             }
         }
     }
-    // TH3: Kế thừa từ cha
     else if (parent) {
         if (parent->isGradient()) {
             svgObj->setGradient(parent->getGradient());
@@ -269,27 +268,27 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         svgObj->setFillOpacity(parent->getFillOpacity());
     }
 
-    //stroke
-    bool isStrokeNone = false; // Flag de tranh ke thua opacity
+    //stroke &stroke opacity
     const char* strokeAttr = element->Attribute("stroke");
+    bool hasStrokeAttr = (strokeAttr != nullptr);
 
-    if (strokeAttr) {
+    if (hasStrokeAttr) {
         svgObj->setStroke(parseColor(strokeAttr));
         if (string(strokeAttr) == "none") {
             svgObj->setStrokeOpacity(0.0f);
-            isStrokeNone = true;
+        }
+        else {
+            svgObj->setStrokeOpacity(1.0f);
         }
     }
     else if (parent) {
         svgObj->setStroke(parent->getStroke());
+        svgObj->setStrokeOpacity(parent->getStrokeOpacity());
     }
 
     // Stroke Opacity
     if (element->Attribute("stroke-opacity")) {
         svgObj->setStrokeOpacity(element->FloatAttribute("stroke-opacity"));
-    }
-    else if (parent && !isStrokeNone) { // Chi ke thua neu khong phai la none
-        svgObj->setStrokeOpacity(parent->getStrokeOpacity());
     }
 
     // Stroke Width
@@ -348,7 +347,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         }
     }
     else {
-        // Trường hợp file SVG không có thẻ <svg> bao ngoài (ít gặp)
+        // TH file svg khong co the <svg> 
         auto obj = parseElementRecursive(element, &defaultContext, gradients);
         if (obj) {
             doc.addElement(move(obj));

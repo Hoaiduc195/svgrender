@@ -2,9 +2,9 @@
 
 SvgElement::SvgElement() {
 	fill = Color(0, 0, 0, 0);
-	stroke = Color(255, 255, 255, 255);
+	stroke = Color(0, 0, 0);
 	strokeWidth = 1.0;
-	strokeOpacity = 1.0f;
+	strokeOpacity = 0.0f;
 	fillOpacity = 1.0f;
 }
 
