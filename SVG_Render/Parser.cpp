@@ -75,39 +75,34 @@ Color Parser::parseColor(const string& value) {
 
     // 2. Xu ly mau HEX
     if (value[0] == '#') {
-        unsigned int r = 0, g = 0, b = 0;
-
-        // Truong hop #RRGGBB (7 ky tu)
-        if (value.length() == 7) {
-            if (sscanf_s(value.c_str(), "#%02x%02x%02x", &r, &g, &b) == 3) {
-                return Color(255, r, g, b);
-            }
+        string hexStr = value.substr(1);
+        unsigned long val = strtoul(hexStr.c_str(), nullptr, 16);
+        if (hexStr.length() == 6) {
+            return Color(255, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF);
         }
-        else if (value.length() == 4) {
-            unsigned int r_s = 0, g_s = 0, b_s = 0;
-            if (sscanf_s(value.c_str(), "#%1x%1x%1x", &r_s, &g_s, &b_s) == 3) {
-                r = r_s * 17;
-                g = g_s * 17;
-                b = b_s * 17;
-                return Color(255, r, g, b);
-            }
+        else if (hexStr.length() == 3) {
+            unsigned int r = (val >> 8) & 0xF;
+            unsigned int g = (val >> 4) & 0xF;
+            unsigned int b = val & 0xF;
+            return Color(255, r * 17, g * 17, b * 17);
         }
     }
 
     // Xu ly RGB
-    unsigned int r, g, b;
-    if (sscanf_s(value.c_str(), "rgb(%d,%d,%d)", &r, &g, &b) == 3)
+    static const regex re(R"(rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\))");
+    smatch match;
+    if (regex_search(value, match, re)) {
+        int r = stoi(match[1]);
+        int g = stoi(match[2]);
+        int b = stoi(match[3]);
+        if (r > 255) r = 255;
+        if (g > 255) g = 255;
+        if (b > 255) b = 255;
         return Color(255, r, g, b);
+    }
 
     // Xu ly ten mau co ban
-    if (value == "red") return Color::Red;
-    if (value == "blue") return Color::Blue;
-    if (value == "green") return Color::Green;
-    if (value == "black") return Color::Black;
-    if (value == "yellow") return Color::Yellow;
-    if (value == "white") return Color::White;
-    
-    return Color::Black;
+    return getColorByName(value);
 }
 
 LinearGradient Parser::parseLinearGradient(tinyxml2::XMLElement* elem) {

@@ -1,7 +1,7 @@
 #pragma once
 #include "SvgDocument.h"
 #include "SvgElement.h"
-#include "SvgGradient.h"
+#include "Color.h"
 #include "framework.h"
 #include "tinyxml2.h"
 #include <map>
