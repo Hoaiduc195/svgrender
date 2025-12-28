@@ -39,11 +39,9 @@ float AngleFromVector(float ux, float uy) {
     return atan2(uy, ux);
 }
 
-// Hàm vẽ đoạn Bezier xấp xỉ cung tròn
 void AddArcSegment(GraphicsPath& path, float cx, float cy, float rx, float ry,
     float phi, float theta1, float theta2) {
 
-    // Công thức F.6.3 trong tài liệu W3C SVG
     float halfDiff = (theta2 - theta1) / 2.0f;
     float kappa = (4.0f / 3.0f) * (1.0f - cos(halfDiff)) / sin(halfDiff);
 
@@ -51,17 +49,14 @@ void AddArcSegment(GraphicsPath& path, float cx, float cy, float rx, float ry,
     float c2 = cos(theta2), s2 = sin(theta2);
     float cosPhi = cos(phi), sinPhi = sin(phi);
 
-    // FIX LỖI SAI CÔNG THỨC Ở ĐÂY:
-    // Input x, y đã là toạ độ trên elip chưa xoay (đã nhân rx, ry bên ngoài)
-    // Nên ở đây chỉ thực hiện phép xoay (Rotation) và tịnh tiến (Translation).
+    // Công thức tính điểm đã fix (chỉ xoay, không nhân thêm rx/ry)
     auto transformPoint = [&](float x, float y) {
         return PointF(
-            cx + cosPhi * x - sinPhi * y, // Bỏ nhân thêm rx, ry ở đây
+            cx + cosPhi * x - sinPhi * y,
             cy + sinPhi * x + cosPhi * y
         );
         };
 
-    // Tính các điểm điều khiển (Control Points) trên hệ toạ độ chưa xoay
     float x_cp1 = rx * (c1 - kappa * s1);
     float y_cp1 = ry * (s1 + kappa * c1);
     PointF cp1 = transformPoint(x_cp1, y_cp1);
@@ -74,7 +69,6 @@ void AddArcSegment(GraphicsPath& path, float cx, float cy, float rx, float ry,
     float y_end = ry * s2;
     PointF end = transformPoint(x_end, y_end);
 
-    // Nối tiếp vào đường dẫn hiện tại
     PointF lastPoint;
     path.GetLastPoint(&lastPoint);
     path.AddBezier(lastPoint, cp1, cp2, end);
@@ -94,13 +88,11 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
     float cosPhi = cos(phi);
     float sinPhi = sin(phi);
 
-    // Bước 1: Tính toạ độ điểm (x1', y1')
     float dx = (x1 - x2) / 2.0f;
     float dy = (y1 - y2) / 2.0f;
     float x1p = cosPhi * dx + sinPhi * dy;
     float y1p = -sinPhi * dx + cosPhi * dy;
 
-    // Bước 2: Điều chỉnh bán kính nếu cần thiết
     float lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
     if (lambda > 1.0f) {
         float sqLambda = sqrt(lambda);
@@ -108,7 +100,6 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
         ry *= sqLambda;
     }
 
-    // Bước 3: Tính tâm (cx', cy')
     float numerator = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
     float denominator = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
     if (numerator < 0) numerator = 0;
@@ -119,11 +110,9 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
     float cxp = coef * (rx * y1p / ry);
     float cyp = coef * -(ry * x1p / rx);
 
-    // Bước 4: Tính tâm thực (cx, cy)
     float cx = cosPhi * cxp - sinPhi * cyp + (x1 + x2) / 2.0f;
     float cy = sinPhi * cxp + cosPhi * cyp + (y1 + y2) / 2.0f;
 
-    // Bước 5: Tính góc bắt đầu và góc quét
     float vx = (x1p - cxp) / rx;
     float vy = (y1p - cyp) / ry;
     float startAngle = AngleFromVector(vx, vy);
@@ -131,7 +120,6 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
     float vx2 = (-x1p - cxp) / rx;
     float vy2 = (-y1p - cyp) / ry;
 
-    // Tính góc giữa 2 vector
     float dot = vx * vx2 + vy * vy2;
     float cross = vx * vy2 - vy * vx2;
     float sweepAngle = atan2(cross, dot);
@@ -139,8 +127,7 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
     if (sweep && sweepAngle < 0) sweepAngle += 2 * (float)M_PI;
     else if (!sweep && sweepAngle > 0) sweepAngle -= 2 * (float)M_PI;
 
-    // Bước 6: Chia nhỏ cung và vẽ
-    int segments = (int)ceil(std::abs(sweepAngle) / (M_PI / 2.0)); // Mỗi đoạn tối đa 90 độ
+    int segments = (int)ceil(std::abs(sweepAngle) / (M_PI / 2.0));
     float delta = sweepAngle / segments;
     float currentAngle = startAngle;
 
@@ -149,6 +136,7 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
         currentAngle += delta;
     }
 }
+// --- END ARC MATH HELPERS ---
 
 Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
     if (element.getFillType() == FillType::None) return nullptr;
@@ -268,7 +256,7 @@ static void applyTransform(Graphics& graphics, const Transform& transform) {
 }
 
 
-// ... (Giữ nguyên các hàm render cơ bản: Rect, Circle, Polyline...) ...
+// ... [Render methods: Rect, Circle, Ellipse, Line, Polygon, Polyline, Text - GIỮ NGUYÊN] ...
 void Renderer::render(const SvgRect& r) {
     GraphicsState state = g.Save();
     applyTransform(g, r.getTransform());
@@ -450,15 +438,29 @@ void Renderer::render(const SvgPath& p) {
             float rx = parseNum();
             float ry = parseNum();
             float angle = parseNum();
-            float largeArcFlag = parseNum();
-            float sweepFlag = parseNum();
+
+            // FIX: Hàm parse riêng cho Flag để tránh đọc lố sang toạ độ x
+            // Flag trong SVG chỉ là 1 ký tự 0 hoặc 1, không cần khoảng trắng tách biệt
+            auto parseFlag = [&]() -> bool {
+                skip();
+                if (i < d.size() && isdigit(d[i])) {
+                    bool val = (d[i] == '1');
+                    i++; // Chỉ ăn đúng 1 ký tự
+                    return val;
+                }
+                return false;
+                };
+
+            bool largeArcFlag = parseFlag();
+            bool sweepFlag = parseFlag();
+
             float x = parseNum();
             float y = parseNum();
 
             if (isRelative) { x += cur.X; y += cur.Y; }
 
             if (figureStarted) {
-                TraceArc(path, cur.X, cur.Y, rx, ry, angle, (largeArcFlag > 0.5f), (sweepFlag > 0.5f), x, y);
+                TraceArc(path, cur.X, cur.Y, rx, ry, angle, largeArcFlag, sweepFlag, x, y);
             }
             cur = PointF(x, y);
             lastWasCubic = false;
