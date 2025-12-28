@@ -1,5 +1,5 @@
 #pragma once
-#include "Color.h
+#include "Color.h"
 #include "framework.h"
 
 struct SvgPaint {

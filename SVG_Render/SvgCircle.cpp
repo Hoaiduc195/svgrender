@@ -14,7 +14,9 @@ float SvgCircle::getCy() const {
 float SvgCircle::getR() const {
     return r; 
 }
-
+RectF SvgCircle::getBoundingBox() const {
+    return RectF(cx - r, cy - r, 2 * r, 2 * r);
+}
 void SvgCircle::accept(Renderer& renderer) const {
     renderer.render(*this);
 }

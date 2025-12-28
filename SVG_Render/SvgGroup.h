@@ -14,4 +14,5 @@ public:
 	
 	// Getter for accessing child elements
 	const vector<unique_ptr<SvgElement>>& getElements() const;
+	RectF getBoundingBox() const override;
 };

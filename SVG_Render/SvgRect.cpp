@@ -23,6 +23,9 @@ float SvgRect::getRx() const {
 float SvgRect::getRy() const { 
     return ry; 
 }
+RectF SvgRect::getBoundingBox() const {
+    return RectF(x, y, width, height);
+}
 
 void SvgRect::accept(Renderer& renderer) const {
     renderer.render(*this);

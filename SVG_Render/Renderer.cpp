@@ -1,6 +1,6 @@
 ﻿#include "Renderer.h"
-#include "SvgDocument.h" // Required to access the Gradient Pool
-#include "Gradient.h"    // Required to distinguish Linear vs Radial
+#include "SvgDocument.h" 
+#include "Gradient.h"
 #include "SvgRect.h"
 #include "SvgCircle.h"
 #include "SvgEllipse.h"
@@ -9,9 +9,9 @@
 #include "SvgPolyline.h"
 #include "SvgText.h"
 #include "SvgPath.h"
+#include "SvgGroup.h"
 #include "Transform.h"
-#include <vector>
-#include <cmath>
+#include "framework.h"
 
 // Helper to safely clamp values
 template <typename T>
@@ -21,36 +21,64 @@ T clamp(T val, T minVal, T maxVal) {
     return val;
 }
 
+// -------------------------------------------------------------------------
+// Helper: createBrush
+// Handles Solid Color, Linear Gradient, and Radial Gradient creation.
+// -------------------------------------------------------------------------
 Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
-    // 1. Check for "None" or fully transparent solid fills
-    if (element.getFillType() == FillType::None) {
-        return nullptr;
-    }
-    if (element.getFillType() == FillType::SolidColor && element.getFillOpacity() <= 0.0f) {
-        return nullptr;
-    }
+    // 1. Check for "None" or fully transparent
+    if (element.getFillType() == FillType::None) return nullptr;
+    if (element.getFillType() == FillType::SolidColor && element.getFillOpacity() <= 0.0f) return nullptr;
 
     // 2. Handle Gradients
     if (element.getFillType() == FillType::Gradient && doc != nullptr) {
         const Gradient* gradBase = doc->getGradient(element.getGradientId());
 
         if (gradBase) {
+            RectF bounds = element.getBoundingBox();
+
+            // Prepare Gradient Transform Matrix (GDI+)
+            Matrix gradientTransformMatrix;
+            Matrix3x3 m = gradBase->transform.getMatrix();
+            gradientTransformMatrix.SetElements(
+                (REAL)m.matrix[0][0], (REAL)m.matrix[0][1],
+                (REAL)m.matrix[1][0], (REAL)m.matrix[1][1],
+                (REAL)m.matrix[0][2], (REAL)m.matrix[1][2]
+            );
+
             // --- LINEAR GRADIENT ---
             if (gradBase->type == GradientType::Linear) {
                 const auto* lGrad = static_cast<const LinearGradient*>(gradBase);
-                PointF p1(lGrad->x1, lGrad->y1);
-                PointF p2(lGrad->x2, lGrad->y2);
+                PointF p1, p2;
+
+                if (gradBase->units == GradientUnits::UserSpaceOnUse) {
+                    p1 = PointF(lGrad->x1, lGrad->y1);
+                    p2 = PointF(lGrad->x2, lGrad->y2);
+                }
+                else {
+                    // ObjectBoundingBox
+                    p1 = PointF(bounds.X + lGrad->x1 * bounds.Width, bounds.Y + lGrad->y1 * bounds.Height);
+                    p2 = PointF(bounds.X + lGrad->x2 * bounds.Width, bounds.Y + lGrad->y2 * bounds.Height);
+                }
+
+                // Protect against zero-area gradient
+                if (abs(p1.X - p2.X) < 0.001f && abs(p1.Y - p2.Y) < 0.001f) {
+                    return new SolidBrush(Color::Black);
+                }
 
                 auto* brush = new LinearGradientBrush(p1, p2, Color::Black, Color::White);
 
+                // Apply Transform
+                brush->MultiplyTransform(&gradientTransformMatrix);
+
                 // Setup stops
-                int count = (int)lGrad->stops.size();
+                int count = (int)gradBase->stops.size();
                 if (count > 0) {
                     std::vector<Color> colors(count);
                     std::vector<REAL> positions(count);
                     for (int i = 0; i < count; ++i) {
-                        colors[i] = lGrad->stops[i].color;
-                        positions[i] = static_cast<REAL>(lGrad->stops[i].offset);
+                        colors[i] = gradBase->stops[i].color;
+                        positions[i] = static_cast<REAL>(gradBase->stops[i].offset);
                     }
                     brush->SetInterpolationColors(colors.data(), positions.data(), count);
                 }
@@ -59,26 +87,58 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
             // --- RADIAL GRADIENT ---
             else if (gradBase->type == GradientType::Radial) {
                 const auto* rGrad = static_cast<const RadialGradient*>(gradBase);
-
-                // GDI+ PathGradientBrush is used for Radial Gradients
                 GraphicsPath path;
-                // Add the outer circle (defined by cx, cy, r)
-                path.AddEllipse(rGrad->cx - rGrad->r, rGrad->cy - rGrad->r, rGrad->r * 2, rGrad->r * 2);
 
+                float cx, cy, r, fx, fy;
+
+                if (gradBase->units == GradientUnits::UserSpaceOnUse) {
+                    cx = rGrad->cx;
+                    cy = rGrad->cy;
+                    r = rGrad->r;
+                    fx = rGrad->fx;
+                    fy = rGrad->fy;
+                }
+                else {
+                    // ObjectBoundingBox logic
+                    // Standard SVG: r is relative to normalized diagonal length
+                    float diag = sqrt(bounds.Width * bounds.Width + bounds.Height * bounds.Height);
+                    float normR = rGrad->r * (diag / sqrt(2.0f));
+
+                    cx = bounds.X + rGrad->cx * bounds.Width;
+                    cy = bounds.Y + rGrad->cy * bounds.Height;
+                    r = normR;
+                    fx = bounds.X + rGrad->fx * bounds.Width;
+                    fy = bounds.Y + rGrad->fy * bounds.Height;
+                }
+
+                // GDI+ PathGradientBrush needs a closed path to define the outer boundary
+                path.AddEllipse(cx - r, cy - r, r * 2, r * 2);
                 auto* brush = new PathGradientBrush(&path);
 
-                // Set the Focal Point (fx, fy) as the center color origin
-                brush->SetCenterPoint(PointF(rGrad->fx, rGrad->fy));
+                brush->SetCenterPoint(PointF(fx, fy));
+                brush->MultiplyTransform(&gradientTransformMatrix);
 
-                // Setup stops
-                int count = (int)rGrad->stops.size();
+                // Stops setup
+                int count = (int)gradBase->stops.size();
                 if (count > 0) {
                     std::vector<Color> colors(count);
                     std::vector<REAL> positions(count);
+
+                    // GDI+ PathGradientBrush: 0.0 is Boundary, 1.0 is Center
+                    // SVG: 0% is Center (focal), 100% is Edge
+                    // We must invert: GDI_Pos = 1.0 - SVG_Offset
                     for (int i = 0; i < count; ++i) {
-                        colors[i] = rGrad->stops[i].color;
-                        positions[i] = 1.0f - static_cast<REAL>(rGrad->stops[i].offset);
+                        colors[i] = gradBase->stops[i].color;
+                        positions[i] = 1.0f - static_cast<REAL>(gradBase->stops[i].offset);
                     }
+
+                    // GDI+ requires positions to be increasing. Since we inverted, they are likely decreasing.
+                    // We must sort them or reverse them.
+                    // Assuming SVG stops came 0 -> 1, our array is now 1 -> 0.
+                    // Reverse to get 0 -> 1 for GDI+
+                    std::reverse(colors.begin(), colors.end());
+                    std::reverse(positions.begin(), positions.end());
+
                     brush->SetInterpolationColors(colors.data(), positions.data(), count);
                 }
                 return brush;
@@ -86,7 +146,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
         }
     }
 
-    // 3. Fallback: Solid Color (Standard or if Gradient lookup failed)
+    // 3. Fallback: Solid Color
     Color c = element.getFill();
     return new SolidBrush(Color(
         static_cast<BYTE>(element.getFillOpacity() * 255),
@@ -94,6 +154,9 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
     ));
 }
 
+// -------------------------------------------------------------------------
+// Helper: applyTransform
+// -------------------------------------------------------------------------
 static void applyTransform(Graphics& graphics, const Transform& transform) {
     Matrix3x3 m = transform.getMatrix();
     Matrix gdipMatrix(
@@ -104,12 +167,14 @@ static void applyTransform(Graphics& graphics, const Transform& transform) {
     graphics.MultiplyTransform(&gdipMatrix);
 }
 
+// -------------------------------------------------------------------------
+// Renderer Implementation
+// -------------------------------------------------------------------------
 
 void Renderer::render(const SvgRect& r) {
     GraphicsState state = g.Save();
     applyTransform(g, r.getTransform());
 
-    // Create Brush with context (doc)
     Brush* brush = createBrush(r, doc);
     if (brush) {
         g.FillRectangle(brush, r.getX(), r.getY(), r.getWidth(), r.getHeight());
@@ -122,7 +187,6 @@ void Renderer::render(const SvgRect& r) {
             r.getStrokeWidth());
         g.DrawRectangle(&pen, r.getX(), r.getY(), r.getWidth(), r.getHeight());
     }
-
     g.Restore(state);
 }
 
@@ -146,7 +210,6 @@ void Renderer::render(const SvgCircle& c) {
             c.getStrokeWidth());
         g.DrawEllipse(&pen, cx - rrad, cy - rrad, rrad * 2, rrad * 2);
     }
-
     g.Restore(state);
 }
 
@@ -171,7 +234,6 @@ void Renderer::render(const SvgEllipse& e) {
             e.getStrokeWidth());
         g.DrawEllipse(&pen, x, y, w, h);
     }
-
     g.Restore(state);
 }
 
@@ -179,14 +241,12 @@ void Renderer::render(const SvgLine& l) {
     GraphicsState state = g.Save();
     applyTransform(g, l.getTransform());
 
-    // Lines typically don't have fills, only strokes
     if (l.getStrokeOpacity() > 0 && l.getStrokeWidth() > 0) {
         Pen pen(Color(static_cast<BYTE>(l.getStrokeOpacity() * 255),
             l.getStroke().GetR(), l.getStroke().GetG(), l.getStroke().GetB()),
             l.getStrokeWidth());
         g.DrawLine(&pen, l.getX1(), l.getY1(), l.getX2(), l.getY2());
     }
-
     g.Restore(state);
 }
 
@@ -214,7 +274,6 @@ void Renderer::render(const SvgPolygon& p) {
             p.getStrokeWidth());
         g.DrawPolygon(&pen, gdiPoints.data(), (INT)gdiPoints.size());
     }
-
     g.Restore(state);
 }
 
@@ -246,7 +305,6 @@ void Renderer::render(const SvgPolyline& p) {
     if (p.getStrokeOpacity() > 0 && p.getStrokeWidth() > 0) {
         g.DrawLines(&pen, gdiPoints.data(), (INT)gdiPoints.size());
     }
-
     g.Restore(state);
 }
 
@@ -257,13 +315,11 @@ void Renderer::render(const SvgText& t) {
     FontFamily fontFamily(L"Times New Roman");
     int fontStyle = FontStyleRegular;
     float fontSize = t.getFontSize();
-
     std::wstring wContent(t.getContent().begin(), t.getContent().end());
 
     GraphicsPath path;
     Font tempFont(&fontFamily, fontSize, fontStyle, UnitPixel);
 
-    // GDI+ Text Measurement logic
     float yPos = t.getY() - tempFont.GetHeight(&g);
     float xPos = t.getX();
 
@@ -273,22 +329,13 @@ void Renderer::render(const SvgText& t) {
         StringFormat format;
         g.MeasureString(wContent.c_str(), -1, &tempFont, PointF(0, 0), &format, &boundingBox);
         float textWidth = boundingBox.Width;
-
-        if (textAnchor == "middle") {
-            xPos -= textWidth / 2.0f;
-        }
-        else if (textAnchor == "end") {
-            xPos -= textWidth;
-        }
+        if (textAnchor == "middle") xPos -= textWidth / 2.0f;
+        else if (textAnchor == "end") xPos -= textWidth;
     }
 
     PointF origin(xPos, yPos);
     StringFormat format;
-    path.AddString(
-        wContent.c_str(), -1,
-        &fontFamily, fontStyle, fontSize,
-        origin, &format
-    );
+    path.AddString(wContent.c_str(), -1, &fontFamily, fontStyle, fontSize, origin, &format);
 
     Brush* brush = createBrush(t, doc);
     if (brush) {
@@ -297,17 +344,12 @@ void Renderer::render(const SvgText& t) {
     }
 
     if (t.getStrokeOpacity() > 0.0f && t.getStrokeWidth() > 0.0f) {
-        Color strokeColor(
-            static_cast<BYTE>(t.getStrokeOpacity() * 255),
-            t.getStroke().GetR(),
-            t.getStroke().GetG(),
-            t.getStroke().GetB()
-        );
+        Color strokeColor(static_cast<BYTE>(t.getStrokeOpacity() * 255),
+            t.getStroke().GetR(), t.getStroke().GetG(), t.getStroke().GetB());
         Pen pen(strokeColor, t.getStrokeWidth());
         pen.SetLineJoin(LineJoinRound);
         g.DrawPath(&pen, &path);
     }
-
     g.Restore(state);
 }
 
@@ -316,10 +358,7 @@ void Renderer::render(const SvgPath& p) {
     applyTransform(g, p.getTransform());
 
     const string& d = p.getPathData();
-    if (d.empty()) {
-        g.Restore(state);
-        return;
-    }
+    if (d.empty()) { g.Restore(state); return; }
 
     GraphicsPath path;
     PointF cur(0, 0);
@@ -328,29 +367,16 @@ void Renderer::render(const SvgPath& p) {
     size_t i = 0;
     char cmd = 0;
 
-    auto skip = [&]() {
-        while (i < d.size() && (isspace(d[i]) || d[i] == ',')) i++;
-        };
-
+    auto skip = [&]() { while (i < d.size() && (isspace(d[i]) || d[i] == ',')) i++; };
     auto parseNum = [&]() -> float {
         skip();
         bool neg = false;
-        if (i < d.size() && d[i] == '-') {
-            neg = true; i++;
-        }
+        if (i < d.size() && d[i] == '-') { neg = true; i++; }
         float v = 0;
-        while (i < d.size() && isdigit(d[i])) {
-            v = v * 10 + (d[i] - '0');
-            i++;
-        }
+        while (i < d.size() && isdigit(d[i])) { v = v * 10 + (d[i] - '0'); i++; }
         if (i < d.size() && d[i] == '.') {
-            i++;
-            float mul = 0.1f;
-            while (i < d.size() && isdigit(d[i])) {
-                v += (d[i] - '0') * mul;
-                mul *= 0.1f;
-                i++;
-            }
+            i++; float mul = 0.1f;
+            while (i < d.size() && isdigit(d[i])) { v += (d[i] - '0') * mul; mul *= 0.1f; i++; }
         }
         return neg ? -v : v;
         };
@@ -358,34 +384,23 @@ void Renderer::render(const SvgPath& p) {
     while (i < d.size()) {
         skip();
         if (i >= d.size()) break;
-
-        if (isalpha(d[i])) {
-            cmd = d[i++];
-            skip();
-        }
-        else if (cmd == 0) {
-            i++; continue;
-        }
+        if (isalpha(d[i])) { cmd = d[i++]; skip(); }
+        else if (cmd == 0) { i++; continue; }
 
         bool isRelative = islower(cmd);
         char upperCmd = toupper(cmd);
 
-        switch (upperCmd)
-        {
+        switch (upperCmd) {
         case 'M': {
-            float x = parseNum();
-            float y = parseNum();
+            float x = parseNum(); float y = parseNum();
             if (isRelative) { x += cur.X; y += cur.Y; }
             path.StartFigure();
-            cur = PointF(x, y);
-            start = cur;
-            figureStarted = true;
-            cmd = isRelative ? 'l' : 'L'; // Subsequent coordinates are implicitly Lines
+            cur = PointF(x, y); start = cur; figureStarted = true;
+            cmd = isRelative ? 'l' : 'L';
             break;
         }
         case 'L': {
-            float x = parseNum();
-            float y = parseNum();
+            float x = parseNum(); float y = parseNum();
             if (isRelative) { x += cur.X; y += cur.Y; }
             if (figureStarted) path.AddLine(cur, PointF(x, y));
             cur = PointF(x, y);
@@ -409,13 +424,8 @@ void Renderer::render(const SvgPath& p) {
             float x1 = parseNum(), y1 = parseNum();
             float x2 = parseNum(), y2 = parseNum();
             float x = parseNum(), y = parseNum();
-            if (isRelative) {
-                x1 += cur.X; y1 += cur.Y;
-                x2 += cur.X; y2 += cur.Y;
-                x += cur.X; y += cur.Y;
-            }
-            if (figureStarted)
-                path.AddBezier(cur, PointF(x1, y1), PointF(x2, y2), PointF(x, y));
+            if (isRelative) { x1 += cur.X; y1 += cur.Y; x2 += cur.X; y2 += cur.Y; x += cur.X; y += cur.Y; }
+            if (figureStarted) path.AddBezier(cur, PointF(x1, y1), PointF(x2, y2), PointF(x, y));
             cur = PointF(x, y);
             break;
         }
@@ -424,9 +434,7 @@ void Renderer::render(const SvgPath& p) {
             cur = start;
             break;
         }
-        default:
-            i++;
-            break;
+        default: i++; break;
         }
     }
 
@@ -437,16 +445,10 @@ void Renderer::render(const SvgPath& p) {
     }
 
     if (p.getStrokeOpacity() > 0.f && p.getStrokeWidth() > 0.f) {
-        Color color(
-            (BYTE)(p.getStrokeOpacity() * 255),
-            p.getStroke().GetR(),
-            p.getStroke().GetG(),
-            p.getStroke().GetB()
-        );
+        Color color((BYTE)(p.getStrokeOpacity() * 255), p.getStroke().GetR(), p.getStroke().GetG(), p.getStroke().GetB());
         Pen pen(color, p.getStrokeWidth());
         g.DrawPath(&pen, &path);
     }
-
     g.Restore(state);
 }
 
@@ -457,10 +459,8 @@ void Renderer::render(const SvgGroup& grp) {
     const auto& elements = grp.getElements();
     for (const auto& element : elements) {
         if (element) {
-            // Pass the visitor (this) which contains the context 'doc'
             element->accept(*this);
         }
     }
-
     g.Restore(state);
 }

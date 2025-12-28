@@ -18,4 +18,5 @@ public:
 
 	// Getter
 	const vector<Vector2>& getPoints() const;
+	RectF getBoundingBox() const override;
 };

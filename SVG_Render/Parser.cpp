@@ -8,11 +8,12 @@
 #include "SvgText.h"
 #include "SvgPath.h"
 #include "SvgGroup.h"
+#include "Transform.h" 
 #include <regex>
 #include <sstream>
 #include <algorithm>
 
-// Helper to safely clamp values (Fixes C3861)
+// Helper to safely clamp values
 template <typename T>
 T clamp(T val, T minVal, T maxVal) {
     if (val < minVal) return minVal;
@@ -50,6 +51,12 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
             ss >> val1;
             if (!(ss >> val2)) val2 = val1;
             currentTrans.scale(val1, val2);
+        }
+        else if (command == "matrix") {
+            double a, b, c, d, e, f;
+            if (ss >> a >> b >> c >> d >> e >> f) {
+                currentTrans.matrix(a, b, c, d, e, f);
+            }
         }
     }
     element->setTransform(currentTrans);
@@ -99,16 +106,19 @@ Color Parser::parseColor(const string& value) {
     return getColorByName(value);
 }
 
-unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem) {
+// Updated to take SvgDocument for inheritance lookup
+unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem, SvgDocument* doc) {
     string tag = elem->Name();
     unique_ptr<Gradient> grad = nullptr;
 
+    // 1. Determine Type & Default Coordinates
     if (tag == "linearGradient") {
         auto lGrad = make_unique<LinearGradient>();
-        lGrad->x1 = elem->FloatAttribute("x1", 0);
-        lGrad->y1 = elem->FloatAttribute("y1", 0);
-        lGrad->x2 = elem->FloatAttribute("x2", 100);
-        lGrad->y2 = elem->FloatAttribute("y2", 0);
+        // Default is 0% to 100% (0 to 1 in objectBoundingBox)
+        lGrad->x1 = elem->FloatAttribute("x1", 0.0f);
+        lGrad->y1 = elem->FloatAttribute("y1", 0.0f);
+        lGrad->x2 = elem->FloatAttribute("x2", 1.0f);
+        lGrad->y2 = elem->FloatAttribute("y2", 0.0f);
         grad = move(lGrad);
     }
     else if (tag == "radialGradient") {
@@ -121,27 +131,74 @@ unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem) {
         grad = move(rGrad);
     }
 
-    if (grad) {
-        grad->id = elem->Attribute("id") ? elem->Attribute("id") : "";
-        tinyxml2::XMLElement* child = elem->FirstChildElement();
-        while (child) {
-            if (string(child->Name()) == "stop") {
-                GradientStop stop;
-                string offsetStr = child->Attribute("offset") ? child->Attribute("offset") : "0";
-                if (!offsetStr.empty() && offsetStr.back() == '%') {
-                    stop.offset = stof(offsetStr) / 100.0f;
-                }
-                else {
-                    stop.offset = stof(offsetStr);
-                }
+    if (!grad) return nullptr;
 
-                const char* colorAttr = child->Attribute("stop-color");
-                stop.color = colorAttr ? Parser::parseColor(colorAttr) : Color::Black;
-                grad->stops.push_back(stop);
-            }
-            child = child->NextSiblingElement();
+    // 2. ID
+    grad->id = elem->Attribute("id") ? elem->Attribute("id") : "";
+
+    // 3. Units
+    const char* unitsAttr = elem->Attribute("gradientUnits");
+    if (unitsAttr && string(unitsAttr) == "userSpaceOnUse") {
+        grad->units = GradientUnits::UserSpaceOnUse;
+    }
+    else {
+        grad->units = GradientUnits::ObjectBoundingBox;
+    }
+
+    // 4. Transform (gradientTransform)
+    const char* transAttr = elem->Attribute("gradientTransform");
+    if (transAttr) {
+        // We reuse the existing parseTransform logic by creating a dummy element
+        SvgGroup dummy;
+        parseTransformAttribute(transAttr, &dummy);
+        grad->transform = dummy.getTransform();
+    }
+
+    // 5. Inheritance (xlink:href) - Handle this BEFORE parsing own stops
+    const char* href = elem->Attribute("xlink:href");
+    if (!href) href = elem->Attribute("href");
+
+    if (href && doc) {
+        string linkId = href;
+        if (linkId.size() > 1 && linkId[0] == '#') linkId = linkId.substr(1);
+
+        // Find parent in the document (assumes parent parsed first, which is standard in SVG defs)
+        const Gradient* parent = doc->getGradient(linkId);
+        if (parent) {
+            grad->stops = parent->stops; // Inherit stops
         }
     }
+
+    // 6. Parse Stops (Children override inherited stops)
+    vector<GradientStop> ownStops;
+    tinyxml2::XMLElement* child = elem->FirstChildElement();
+    while (child) {
+        if (string(child->Name()) == "stop") {
+            GradientStop stop;
+            string offsetStr = child->Attribute("offset") ? child->Attribute("offset") : "0";
+            if (!offsetStr.empty() && offsetStr.back() == '%') {
+                stop.offset = stof(offsetStr) / 100.0f;
+            }
+            else {
+                stop.offset = stof(offsetStr);
+            }
+            stop.offset = clamp(stop.offset, 0.0f, 1.0f);
+
+            const char* colorAttr = child->Attribute("stop-color");
+            float stopOpacity = child->FloatAttribute("stop-opacity", 1.0f);
+
+            Color c = colorAttr ? Parser::parseColor(colorAttr) : Color::Black;
+            stop.color = Color((unsigned char)(stopOpacity * 255), c.GetR(), c.GetG(), c.GetB());
+
+            ownStops.push_back(stop);
+        }
+        child = child->NextSiblingElement();
+    }
+
+    if (!ownStops.empty()) {
+        grad->stops = ownStops;
+    }
+
     return grad;
 }
 
@@ -149,12 +206,14 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     if (!element) return nullptr;
     string tag = element->Name();
 
+    // --- Definitions & Gradients ---
+    // If it's a definition block, parse children immediately
     if (tag == "defs") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
             string childTag = child->Name();
             if (childTag == "linearGradient" || childTag == "radialGradient") {
-                auto grad = parseGradient(child);
+                auto grad = parseGradient(child, doc);
                 if (grad && doc) doc->addGradient(move(grad));
             }
             child = child->NextSiblingElement();
@@ -162,12 +221,14 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         return nullptr;
     }
 
+    // If it's a standalone gradient
     if (tag == "linearGradient" || tag == "radialGradient") {
-        auto grad = parseGradient(element);
+        auto grad = parseGradient(element, doc);
         if (grad && doc) doc->addGradient(move(grad));
         return nullptr;
     }
 
+    // --- Standard Shapes ---
     unique_ptr<SvgElement> svgObj = nullptr;
 
     if (tag == "g") svgObj = make_unique<SvgGroup>();
@@ -232,6 +293,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
 
     if (!svgObj) return nullptr;
 
+    // --- Attributes ---
     bool isFillNone = false;
     const char* fillAttr = element->Attribute("fill");
 

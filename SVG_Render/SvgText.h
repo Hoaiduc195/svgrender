@@ -31,4 +31,5 @@ public:
     float getFontSize() const;
     const string& getContent() const;
     const string& getTextAnchor() const;
+    RectF getBoundingBox() const override;
 };

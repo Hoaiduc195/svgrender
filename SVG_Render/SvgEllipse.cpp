@@ -17,7 +17,9 @@ float SvgEllipse::getRx() const {
 float SvgEllipse::getRy() const {
     return ry; 
 }
-
+RectF SvgEllipse::getBoundingBox() const {
+    return RectF(cx - rx, cy - ry, 2 * rx, 2 * ry);
+}
 
 void SvgEllipse::accept(Renderer& renderer) const {
     renderer.render(*this);

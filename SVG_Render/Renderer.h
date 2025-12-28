@@ -14,7 +14,7 @@
 
 class Renderer {
 public:
-    Renderer(Graphics& g) : g(g) {}
+    Renderer(Graphics& g) : g(g), doc(nullptr) {}
     Renderer(Graphics& graphics, const SvgDocument* document)
         : g(graphics), doc(document) {
     }

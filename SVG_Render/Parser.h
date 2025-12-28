@@ -5,20 +5,24 @@
 #include "Gradient.h" 
 #include "framework.h"
 #include "tinyxml2.h"
-
+#include <string>
+#include <memory>
 
 class Parser {
 public:
-    static unique_ptr<SvgDocument> parseSVG(const string& xmlText);
+    static std::unique_ptr<SvgDocument> parseSVG(const std::string& xmlText);
 
 private:
-    static unique_ptr<SvgElement> parseElementRecursive(
+    static std::unique_ptr<SvgElement> parseElementRecursive(
         tinyxml2::XMLElement* element,
         const SvgElement* parent,
         SvgDocument* doc);
 
-    static unique_ptr<Gradient> parseGradient(tinyxml2::XMLElement* elem);
+    static std::unique_ptr<Gradient> parseGradient(
+        tinyxml2::XMLElement* elem,
+        SvgDocument* doc
+    );
 
     static void parseElement(tinyxml2::XMLElement* element, SvgDocument& doc);
-    static Color parseColor(const string& value);
+    static Color parseColor(const std::string& value);
 };

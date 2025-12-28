@@ -20,4 +20,5 @@ class SvgEllipse : public SvgElement {
         float getCy() const;
         float getRx() const;
         float getRy() const;
+        RectF getBoundingBox() const override;
 };

@@ -1,6 +1,5 @@
 #include"SvgText.h"
-#include <vector>
-#include <string>
+#include "framework.h"
 #include "Renderer.h"
 
 SvgText::~SvgText() {}
@@ -60,4 +59,14 @@ const string& SvgText::getContent() const {
 }
 const string& SvgText::getTextAnchor() const {
 	return textAnchor; 
+}
+RectF SvgText::getBoundingBox() const {
+	float estWidth = content.length() * fontSize * 0.6f;
+	float estHeight = fontSize;
+
+	float startX = x;
+	if (textAnchor == "middle") startX -= estWidth / 2.0f;
+	else if (textAnchor == "end") startX -= estWidth;
+
+	return RectF(startX, y - estHeight, estWidth, estHeight);
 }

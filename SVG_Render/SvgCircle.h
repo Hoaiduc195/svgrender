@@ -17,4 +17,5 @@ class SvgCircle : public SvgElement {
         float getCx() const;
         float getCy() const;
         float getR() const;
+        RectF getBoundingBox() const override;
 };

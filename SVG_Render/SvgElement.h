@@ -51,4 +51,5 @@ public:
     Transform getTransform() const;
 
     virtual void accept(Renderer& renderer) const = 0;
+    virtual RectF getBoundingBox() const = 0;
 };

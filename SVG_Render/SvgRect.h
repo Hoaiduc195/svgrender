@@ -23,4 +23,5 @@ class SvgRect : public SvgElement {
         float getHeight() const;
         float getRx() const;
         float getRy() const;
+        RectF getBoundingBox() const override;
 };

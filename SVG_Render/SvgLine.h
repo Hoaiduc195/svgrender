@@ -19,4 +19,5 @@ class SvgLine : public SvgElement {
         float getY1() const;
         float getX2() const;
         float getY2() const;
+        RectF getBoundingBox() const override;
 };
