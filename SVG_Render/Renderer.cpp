@@ -353,6 +353,8 @@ void Renderer::render(const SvgText& t) {
     g.Restore(state);
 }
 
+// In Renderer.cpp
+
 void Renderer::render(const SvgPath& p) {
     GraphicsState state = g.Save();
     applyTransform(g, p.getTransform());
@@ -363,6 +365,11 @@ void Renderer::render(const SvgPath& p) {
     GraphicsPath path;
     PointF cur(0, 0);
     PointF start(0, 0);
+
+    // Track the last control point for 'S' command reflection
+    PointF lastCubicControl(0, 0);
+    bool lastWasCubic = false;
+
     bool figureStarted = false;
     size_t i = 0;
     char cmd = 0;
@@ -396,6 +403,7 @@ void Renderer::render(const SvgPath& p) {
             if (isRelative) { x += cur.X; y += cur.Y; }
             path.StartFigure();
             cur = PointF(x, y); start = cur; figureStarted = true;
+            lastWasCubic = false; // Reset cubic tracking
             cmd = isRelative ? 'l' : 'L';
             break;
         }
@@ -404,6 +412,7 @@ void Renderer::render(const SvgPath& p) {
             if (isRelative) { x += cur.X; y += cur.Y; }
             if (figureStarted) path.AddLine(cur, PointF(x, y));
             cur = PointF(x, y);
+            lastWasCubic = false;
             break;
         }
         case 'H': {
@@ -411,6 +420,7 @@ void Renderer::render(const SvgPath& p) {
             if (isRelative) x += cur.X;
             if (figureStarted) path.AddLine(cur, PointF(x, cur.Y));
             cur.X = x;
+            lastWasCubic = false;
             break;
         }
         case 'V': {
@@ -418,23 +428,61 @@ void Renderer::render(const SvgPath& p) {
             if (isRelative) y += cur.Y;
             if (figureStarted) path.AddLine(cur, PointF(cur.X, y));
             cur.Y = y;
+            lastWasCubic = false;
             break;
         }
         case 'C': {
             float x1 = parseNum(), y1 = parseNum();
             float x2 = parseNum(), y2 = parseNum();
             float x = parseNum(), y = parseNum();
-            if (isRelative) { x1 += cur.X; y1 += cur.Y; x2 += cur.X; y2 += cur.Y; x += cur.X; y += cur.Y; }
+            if (isRelative) {
+                x1 += cur.X; y1 += cur.Y;
+                x2 += cur.X; y2 += cur.Y;
+                x += cur.X; y += cur.Y;
+            }
             if (figureStarted) path.AddBezier(cur, PointF(x1, y1), PointF(x2, y2), PointF(x, y));
+
             cur = PointF(x, y);
+
+            // Save control point for next 'S' command
+            lastCubicControl = PointF(x2, y2);
+            lastWasCubic = true;
+            break;
+        }
+        case 'S': {
+            float x2 = parseNum(), y2 = parseNum(); // 2nd Control Point
+            float x = parseNum(), y = parseNum();   // End Point
+
+            if (isRelative) {
+                x2 += cur.X; y2 += cur.Y;
+                x += cur.X; y += cur.Y;
+            }
+
+            // Calculate 1st Control Point (Reflection)
+            PointF ctrl1 = cur;
+            if (lastWasCubic) {
+                ctrl1.X = 2 * cur.X - lastCubicControl.X;
+                ctrl1.Y = 2 * cur.Y - lastCubicControl.Y;
+            }
+
+            if (figureStarted) path.AddBezier(cur, ctrl1, PointF(x2, y2), PointF(x, y));
+
+            cur = PointF(x, y);
+
+            // Save control point for next 'S'
+            lastCubicControl = PointF(x2, y2);
+            lastWasCubic = true;
             break;
         }
         case 'Z': {
             if (figureStarted) path.CloseFigure();
             cur = start;
+            lastWasCubic = false;
             break;
         }
-        default: i++; break;
+        default:
+            i++;
+            break;
         }
     }
 
