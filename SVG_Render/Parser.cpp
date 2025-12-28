@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <string>
 
-// Helper to safely clamp values
 template <typename T>
 T clamp(T val, T minVal, T maxVal) {
     if (val < minVal) return minVal;
@@ -22,7 +21,13 @@ T clamp(T val, T minVal, T maxVal) {
     return val;
 }
 
-// --- Helper Functions ---
+// Helper: Trim string
+std::string trim(const std::string& str) {
+    size_t first = str.find_first_not_of(" \t\r\n");
+    if (std::string::npos == first) return str;
+    size_t last = str.find_last_not_of(" \t\r\n");
+    return str.substr(first, (last - first + 1));
+}
 
 float parseCoordinate(const char* str, float defaultVal) {
     if (!str) return defaultVal;
@@ -94,25 +99,28 @@ static vector<Vector2> parsePoints(const string& pointsStr) {
     return pts;
 }
 
-// --- Parser Class Implementation ---
-
-Color Parser::parseColor(const string& value) {
+Color Parser::parseColor(const string& rawValue) {
+    string value = trim(rawValue);
     if (value.empty() || value == "none") return Color(0, 0, 0, 0);
     if (value.find("url(") != string::npos) return Color::Black;
 
     if (value[0] == '#') {
         string hexStr = value.substr(1);
-        unsigned long val = strtoul(hexStr.c_str(), nullptr, 16);
-        if (hexStr.length() == 6) {
-            return Color(255, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF);
+        try {
+            unsigned long val = strtoul(hexStr.c_str(), nullptr, 16);
+            if (hexStr.length() == 6) {
+                return Color(255, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF);
+            }
+            else if (hexStr.length() == 3) {
+                unsigned int r = (val >> 8) & 0xF;
+                unsigned int g = (val >> 4) & 0xF;
+                unsigned int b = val & 0xF;
+                return Color(255, r * 17, g * 17, b * 17);
+            }
         }
-        else if (hexStr.length() == 3) {
-            unsigned int r = (val >> 8) & 0xF;
-            unsigned int g = (val >> 4) & 0xF;
-            unsigned int b = val & 0xF;
-            return Color(255, r * 17, g * 17, b * 17);
-        }
+        catch (...) {}
     }
+
     static const regex re(R"(rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\))");
     smatch match;
     if (regex_search(value, match, re)) {
@@ -121,6 +129,7 @@ Color Parser::parseColor(const string& value) {
         int b = stoi(match[3]);
         return Color(255, clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255));
     }
+
     return getColorByName(value);
 }
 
@@ -149,7 +158,6 @@ unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem, SvgDocume
     if (!grad) return nullptr;
 
     grad->id = elem->Attribute("id") ? elem->Attribute("id") : "";
-
     const char* unitsAttr = elem->Attribute("gradientUnits");
     grad->units = (unitsAttr && string(unitsAttr) == "userSpaceOnUse") ? GradientUnits::UserSpaceOnUse : GradientUnits::ObjectBoundingBox;
 
@@ -177,13 +185,31 @@ unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem, SvgDocume
             stop.offset = parseCoordinate(child->Attribute("offset"), 0.0f);
             stop.offset = clamp(stop.offset, 0.0f, 1.0f);
 
-            const char* colorAttr = child->Attribute("stop-color");
+            string colorStr = "black";
             float stopOpacity = 1.0f;
-            if (child->QueryFloatAttribute("stop-opacity", &stopOpacity) != tinyxml2::XML_SUCCESS) {
-                stopOpacity = 1.0f;
+
+            // 1. Attribute
+            const char* colorAttr = child->Attribute("stop-color");
+            if (colorAttr) colorStr = colorAttr;
+            child->QueryFloatAttribute("stop-opacity", &stopOpacity);
+
+            // 2. Style (Override)
+            const char* styleAttr = child->Attribute("style");
+            if (styleAttr) {
+                stringstream ss(styleAttr);
+                string item;
+                while (getline(ss, item, ';')) {
+                    size_t colon = item.find(':');
+                    if (colon != string::npos) {
+                        string key = trim(item.substr(0, colon));
+                        string val = trim(item.substr(colon + 1));
+                        if (key == "stop-color") colorStr = val;
+                        else if (key == "stop-opacity") stopOpacity = stof(val);
+                    }
+                }
             }
 
-            Color c = colorAttr ? Parser::parseColor(colorAttr) : Color::Black;
+            Color c = Parser::parseColor(colorStr);
             stop.color = Color((unsigned char)(stopOpacity * 255), c.GetR(), c.GetG(), c.GetB());
             ownStops.push_back(stop);
         }
@@ -281,10 +307,10 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
 
     if (!svgObj) return nullptr;
 
-    // --- 1. Standard Attributes Parsing ---
+    // --- 1. Standard Attributes ---
     const char* fillAttr = element->Attribute("fill");
     if (fillAttr) {
-        string fillStr = fillAttr;
+        string fillStr = trim(fillAttr);
         if (fillStr.find("url(#") != string::npos) {
             size_t start = fillStr.find("#") + 1;
             size_t end = fillStr.find(")");
@@ -297,18 +323,12 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         }
     }
     else if (parent) {
-        if (parent->getFillType() == FillType::Gradient) {
-            svgObj->setFillGradient(parent->getGradientId());
-        }
-        else {
-            svgObj->setFill(parent->getFill());
-        }
+        if (parent->getFillType() == FillType::Gradient) svgObj->setFillGradient(parent->getGradientId());
+        else svgObj->setFill(parent->getFill());
         svgObj->setFillOpacity(parent->getFillOpacity());
     }
 
-    if (element->Attribute("fill-opacity")) {
-        svgObj->setFillOpacity(element->FloatAttribute("fill-opacity"));
-    }
+    if (element->Attribute("fill-opacity")) svgObj->setFillOpacity(element->FloatAttribute("fill-opacity"));
 
     const char* strokeAttr = element->Attribute("stroke");
     if (strokeAttr) {
@@ -325,7 +345,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     if (element->Attribute("stroke-width")) svgObj->setStrokeWidth(element->FloatAttribute("stroke-width"));
     else if (parent) svgObj->setStrokeWidth(parent->getStrokeWidth());
 
-    // --- 2. NEW: STYLE Attribute Parsing (Overrides standard attributes) ---
+    // --- 2. STYLE Parsing (QUAN TRỌNG) ---
     const char* styleAttr = element->Attribute("style");
     if (styleAttr) {
         string styleStr = styleAttr;
@@ -335,14 +355,8 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
             size_t colon = item.find(':');
             if (colon == string::npos) continue;
 
-            string key = item.substr(0, colon);
-            string val = item.substr(colon + 1);
-
-            // Trim whitespace
-            key.erase(0, key.find_first_not_of(" \t\r\n"));
-            key.erase(key.find_last_not_of(" \t\r\n") + 1);
-            val.erase(0, val.find_first_not_of(" \t\r\n"));
-            val.erase(val.find_last_not_of(" \t\r\n") + 1);
+            string key = trim(item.substr(0, colon));
+            string val = trim(item.substr(colon + 1));
 
             if (key == "fill") {
                 if (val.find("url(#") != string::npos) {
@@ -353,23 +367,17 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
                 else {
                     svgObj->setFill(parseColor(val));
                     if (val == "none") svgObj->setFillOpacity(0.0f);
-                    else svgObj->setFillOpacity(1.0f); // Reset opacity if color overrides
+                    else svgObj->setFillOpacity(1.0f);
                 }
             }
-            else if (key == "fill-opacity") {
-                svgObj->setFillOpacity(stof(val));
-            }
+            else if (key == "fill-opacity") svgObj->setFillOpacity(stof(val));
             else if (key == "stroke") {
                 svgObj->setStroke(parseColor(val));
                 if (val == "none") svgObj->setStrokeOpacity(0.0f);
                 else svgObj->setStrokeOpacity(1.0f);
             }
-            else if (key == "stroke-opacity") {
-                svgObj->setStrokeOpacity(stof(val));
-            }
-            else if (key == "stroke-width") {
-                svgObj->setStrokeWidth(stof(val));
-            }
+            else if (key == "stroke-opacity") svgObj->setStrokeOpacity(stof(val));
+            else if (key == "stroke-width") svgObj->setStrokeWidth(stof(val));
         }
     }
 

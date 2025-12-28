@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include "Color.h"
-#include "Transform.h" // Add this include
+#include "Transform.h" 
 
 enum class GradientType {
     Linear,
@@ -18,7 +18,7 @@ struct GradientStop {
     float offset;
     Color color;
 
-	GradientStop() : offset(0), color(Color::AliceBlue) {}
+	GradientStop() : offset(0.0), color(Color::Black) {}
 };
 
 struct Gradient {

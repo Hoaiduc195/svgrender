@@ -15,9 +15,7 @@
 class Renderer {
 public:
     Renderer(Graphics& g) : g(g), doc(nullptr) {}
-    Renderer(Graphics& graphics, const SvgDocument* document)
-        : g(graphics), doc(document) {
-    }
+    Renderer(Graphics& graphics, const SvgDocument* document);
     void render(const SvgRect& r);
     void render(const SvgCircle& c);
     void render(const SvgEllipse& e);

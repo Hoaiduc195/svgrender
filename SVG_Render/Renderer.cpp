@@ -35,40 +35,24 @@ void SetGdiMatrix(const Transform& transform, Matrix& matrix) {
 }
 
 // --- ARC MATH HELPERS ---
-float AngleFromVector(float ux, float uy) {
-    return atan2(uy, ux);
-}
+float AngleFromVector(float ux, float uy) { return atan2(uy, ux); }
 
 void AddArcSegment(GraphicsPath& path, float cx, float cy, float rx, float ry,
     float phi, float theta1, float theta2) {
-
     float halfDiff = (theta2 - theta1) / 2.0f;
     float kappa = (4.0f / 3.0f) * (1.0f - cos(halfDiff)) / sin(halfDiff);
-
     float c1 = cos(theta1), s1 = sin(theta1);
     float c2 = cos(theta2), s2 = sin(theta2);
     float cosPhi = cos(phi), sinPhi = sin(phi);
-
-    // Công thức tính điểm đã fix (chỉ xoay, không nhân thêm rx/ry)
     auto transformPoint = [&](float x, float y) {
-        return PointF(
-            cx + cosPhi * x - sinPhi * y,
-            cy + sinPhi * x + cosPhi * y
-        );
+        return PointF(cx + cosPhi * x - sinPhi * y, cy + sinPhi * x + cosPhi * y);
         };
-
-    float x_cp1 = rx * (c1 - kappa * s1);
-    float y_cp1 = ry * (s1 + kappa * c1);
+    float x_cp1 = rx * (c1 - kappa * s1), y_cp1 = ry * (s1 + kappa * c1);
     PointF cp1 = transformPoint(x_cp1, y_cp1);
-
-    float x_cp2 = rx * (c2 + kappa * s2);
-    float y_cp2 = ry * (s2 - kappa * c2);
+    float x_cp2 = rx * (c2 + kappa * s2), y_cp2 = ry * (s2 - kappa * c2);
     PointF cp2 = transformPoint(x_cp2, y_cp2);
-
-    float x_end = rx * c2;
-    float y_end = ry * s2;
+    float x_end = rx * c2, y_end = ry * s2;
     PointF end = transformPoint(x_end, y_end);
-
     PointF lastPoint;
     path.GetLastPoint(&lastPoint);
     path.AddBezier(lastPoint, cp1, cp2, end);
@@ -76,67 +60,37 @@ void AddArcSegment(GraphicsPath& path, float cx, float cy, float rx, float ry,
 
 void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
     float angle, bool largeArc, bool sweep, float x2, float y2) {
-
-    if (rx == 0 || ry == 0 || (x1 == x2 && y1 == y2)) {
-        path.AddLine(x1, y1, x2, y2);
-        return;
-    }
-
-    rx = std::abs(rx);
-    ry = std::abs(ry);
+    if (rx == 0 || ry == 0 || (x1 == x2 && y1 == y2)) { path.AddLine(x1, y1, x2, y2); return; }
+    rx = std::abs(rx); ry = std::abs(ry);
     float phi = angle * (float)M_PI / 180.0f;
-    float cosPhi = cos(phi);
-    float sinPhi = sin(phi);
-
-    float dx = (x1 - x2) / 2.0f;
-    float dy = (y1 - y2) / 2.0f;
-    float x1p = cosPhi * dx + sinPhi * dy;
-    float y1p = -sinPhi * dx + cosPhi * dy;
-
+    float cosPhi = cos(phi), sinPhi = sin(phi);
+    float dx = (x1 - x2) / 2.0f, dy = (y1 - y2) / 2.0f;
+    float x1p = cosPhi * dx + sinPhi * dy, y1p = -sinPhi * dx + cosPhi * dy;
     float lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
-    if (lambda > 1.0f) {
-        float sqLambda = sqrt(lambda);
-        rx *= sqLambda;
-        ry *= sqLambda;
-    }
-
-    float numerator = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
-    float denominator = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
-    if (numerator < 0) numerator = 0;
-
-    float coef = sqrt(numerator / denominator);
+    if (lambda > 1.0f) { float sqLambda = sqrt(lambda); rx *= sqLambda; ry *= sqLambda; }
+    float num = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
+    float den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+    if (num < 0) num = 0;
+    float coef = sqrt(num / den);
     if (largeArc == sweep) coef = -coef;
-
-    float cxp = coef * (rx * y1p / ry);
-    float cyp = coef * -(ry * x1p / rx);
-
+    float cxp = coef * (rx * y1p / ry), cyp = coef * -(ry * x1p / rx);
     float cx = cosPhi * cxp - sinPhi * cyp + (x1 + x2) / 2.0f;
     float cy = sinPhi * cxp + cosPhi * cyp + (y1 + y2) / 2.0f;
-
-    float vx = (x1p - cxp) / rx;
-    float vy = (y1p - cyp) / ry;
+    float vx = (x1p - cxp) / rx, vy = (y1p - cyp) / ry;
     float startAngle = AngleFromVector(vx, vy);
-
-    float vx2 = (-x1p - cxp) / rx;
-    float vy2 = (-y1p - cyp) / ry;
-
-    float dot = vx * vx2 + vy * vy2;
-    float cross = vx * vy2 - vy * vx2;
+    float vx2 = (-x1p - cxp) / rx, vy2 = (-y1p - cyp) / ry;
+    float dot = vx * vx2 + vy * vy2, cross = vx * vy2 - vy * vx2;
     float sweepAngle = atan2(cross, dot);
-
     if (sweep && sweepAngle < 0) sweepAngle += 2 * (float)M_PI;
     else if (!sweep && sweepAngle > 0) sweepAngle -= 2 * (float)M_PI;
-
     int segments = (int)ceil(std::abs(sweepAngle) / (M_PI / 2.0));
     float delta = sweepAngle / segments;
     float currentAngle = startAngle;
-
     for (int i = 0; i < segments; i++) {
         AddArcSegment(path, cx, cy, rx, ry, phi, currentAngle, currentAngle + delta);
         currentAngle += delta;
     }
 }
-// --- END ARC MATH HELPERS ---
 
 Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
     if (element.getFillType() == FillType::None) return nullptr;
@@ -154,6 +108,11 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
         Matrix fullMatrix;
 
         if (gradBase->units == GradientUnits::ObjectBoundingBox) {
+            // FIX: Xóa bỏ MatrixOrderAppend ở hàm Scale
+            // GDI+ mặc định là Prepend: New = M * Old.
+            // 1. Translate -> M = T
+            // 2. Scale (Prepend) -> M = S * T.
+            // Kết quả biến đổi điểm P: P * S * T (Scale trước, Translate sau) -> ĐÚNG
             fullMatrix.Translate(bounds.X, bounds.Y);
             fullMatrix.Scale(bounds.Width, bounds.Height);
         }
@@ -162,6 +121,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
         SetGdiMatrix(gradBase->transform, svgTransform);
         fullMatrix.Multiply(&svgTransform, MatrixOrderPrepend);
 
+        // --- LINEAR GRADIENT ---
         if (gradBase->type == GradientType::Linear) {
             const auto* lGrad = static_cast<const LinearGradient*>(gradBase);
             PointF p1(lGrad->x1, lGrad->y1);
@@ -172,51 +132,72 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
             if (std::abs(p1.X - p2.X) < 0.1f && std::abs(p1.Y - p2.Y) < 0.1f) p2.X += 0.1f;
 
             auto* brush = new LinearGradientBrush(p1, p2, Color::Black, Color::White);
+
+            // Logic chèn stops 0.0 và 1.0 (Giữ nguyên vì GDI+ yêu cầu)
             int count = (int)gradBase->stops.size();
             if (count > 0) {
-                std::vector<Color> colors(count);
-                std::vector<REAL> positions(count);
-                for (int i = 0; i < count; ++i) {
-                    colors[i] = gradBase->stops[i].color;
-                    positions[i] = static_cast<REAL>(gradBase->stops[i].offset);
+                std::vector<Color> colors;
+                std::vector<REAL> positions;
+
+                if (gradBase->stops[0].offset > 0.001f) {
+                    colors.push_back(gradBase->stops[0].color);
+                    positions.push_back(0.0f);
                 }
-                brush->SetInterpolationColors(colors.data(), positions.data(), count);
+
+                for (int i = 0; i < count; ++i) {
+                    colors.push_back(gradBase->stops[i].color);
+                    positions.push_back(static_cast<REAL>(gradBase->stops[i].offset));
+                }
+
+                if (gradBase->stops.back().offset < 0.999f) {
+                    colors.push_back(gradBase->stops.back().color);
+                    positions.push_back(1.0f);
+                }
+
+                brush->SetInterpolationColors(colors.data(), positions.data(), (INT)colors.size());
             }
             return brush;
         }
+        // --- RADIAL GRADIENT ---
         else if (gradBase->type == GradientType::Radial) {
             const auto* rGrad = static_cast<const RadialGradient*>(gradBase);
-            PointF center(rGrad->cx, rGrad->cy);
-            PointF radiusVec(rGrad->cx + rGrad->r, rGrad->cy);
 
-            fullMatrix.TransformPoints(&center);
-            fullMatrix.TransformPoints(&radiusVec);
-            float effectiveRadius = sqrt(pow(radiusVec.X - center.X, 2) + pow(radiusVec.Y - center.Y, 2));
+            Matrix invGradientTransform;
+            SetGdiMatrix(gradBase->transform, invGradientTransform);
+            invGradientTransform.Invert();
 
-            PointF corners[4] = {
-                PointF(bounds.X, bounds.Y), PointF(bounds.X + bounds.Width, bounds.Y),
-                PointF(bounds.X, bounds.Y + bounds.Height), PointF(bounds.X + bounds.Width, bounds.Y + bounds.Height)
-            };
-            if (gradBase->units == GradientUnits::ObjectBoundingBox) {
-                corners[0] = PointF(0, 0); corners[1] = PointF(1, 0);
-                corners[2] = PointF(0, 1); corners[3] = PointF(1, 1);
+            PointF unitCorners[4] = { {0,0}, {1,0}, {0,1}, {1,1} };
+            if (gradBase->units == GradientUnits::UserSpaceOnUse) {
+                unitCorners[0] = PointF(bounds.X, bounds.Y);
+                unitCorners[1] = PointF(bounds.X + bounds.Width, bounds.Y);
+                unitCorners[2] = PointF(bounds.X, bounds.Y + bounds.Height);
+                unitCorners[3] = PointF(bounds.X + bounds.Width, bounds.Y + bounds.Height);
+                invGradientTransform.TransformPoints(unitCorners, 4);
             }
-            fullMatrix.TransformPoints(corners, 4);
+            else {
+                invGradientTransform.TransformPoints(unitCorners, 4);
+            }
 
             float maxDist = 0;
-            for (int i = 0; i < 4; i++) {
-                float d = sqrt(pow(corners[i].X - center.X, 2) + pow(corners[i].Y - center.Y, 2));
+            PointF center(rGrad->cx, rGrad->cy);
+            auto distSq = [](PointF p1, PointF p2) { return pow(p1.X - p2.X, 2) + pow(p1.Y - p2.Y, 2); };
+
+            for (auto& p : unitCorners) {
+                float d = sqrt(distSq(p, center));
                 if (d > maxDist) maxDist = d;
             }
 
-            float scale = 1.0f;
-            if (maxDist > effectiveRadius) {
-                scale = maxDist / effectiveRadius;
-                effectiveRadius = maxDist;
+            float expansion = 1.0f;
+            if (rGrad->r > 0.0001f && maxDist > rGrad->r) {
+                expansion = maxDist / rGrad->r;
             }
 
+            float expRadius = rGrad->r * expansion;
             GraphicsPath path;
-            path.AddEllipse(center.X - effectiveRadius, center.Y - effectiveRadius, effectiveRadius * 2, effectiveRadius * 2);
+            path.AddEllipse(rGrad->cx - expRadius, rGrad->cy - expRadius, 2 * expRadius, 2 * expRadius);
+
+            path.Transform(&fullMatrix);
+
             auto* brush = new PathGradientBrush(&path);
 
             PointF focus(rGrad->fx, rGrad->fy);
@@ -227,16 +208,18 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
             if (count > 0) {
                 std::vector<Color> colors;
                 std::vector<REAL> positions;
+
                 colors.push_back(gradBase->stops.back().color);
                 positions.push_back(0.0f);
 
                 for (int i = count - 1; i >= 0; --i) {
                     float svgOffset = gradBase->stops[i].offset;
-                    float gdiPos = 1.0f - (svgOffset / scale);
+                    float gdiPos = 1.0f - (svgOffset / expansion);
                     if (!positions.empty() && abs(positions.back() - gdiPos) < 0.001f) continue;
                     colors.push_back(gradBase->stops[i].color);
                     positions.push_back(gdiPos);
                 }
+
                 if (positions.back() < 1.0f) {
                     colors.push_back(gradBase->stops[0].color);
                     positions.push_back(1.0f);
@@ -255,8 +238,9 @@ static void applyTransform(Graphics& graphics, const Transform& transform) {
     graphics.MultiplyTransform(&gdipMatrix);
 }
 
+Renderer::Renderer(Graphics& g, const SvgDocument* document) : g(g), doc(document) {}
 
-// ... [Render methods: Rect, Circle, Ellipse, Line, Polygon, Polyline, Text - GIỮ NGUYÊN] ...
+// ... (Giữ nguyên phần còn lại của Renderer.cpp: render Rect, Circle, Path...) ...
 void Renderer::render(const SvgRect& r) {
     GraphicsState state = g.Save();
     applyTransform(g, r.getTransform());
@@ -354,7 +338,6 @@ void Renderer::render(const SvgPath& p) {
     if (d.empty()) { g.Restore(state); return; }
 
     GraphicsPath path(FillModeWinding);
-
     PointF cur(0, 0);
     PointF start(0, 0);
     PointF lastCubicControl(0, 0);
@@ -439,13 +422,11 @@ void Renderer::render(const SvgPath& p) {
             float ry = parseNum();
             float angle = parseNum();
 
-            // FIX: Hàm parse riêng cho Flag để tránh đọc lố sang toạ độ x
-            // Flag trong SVG chỉ là 1 ký tự 0 hoặc 1, không cần khoảng trắng tách biệt
             auto parseFlag = [&]() -> bool {
                 skip();
                 if (i < d.size() && isdigit(d[i])) {
                     bool val = (d[i] == '1');
-                    i++; // Chỉ ăn đúng 1 ký tự
+                    i++;
                     return val;
                 }
                 return false;
