@@ -1,5 +1,5 @@
 ﻿#include "Renderer.h"
-#include "SvgDocument.h" 
+#include "SvgDocument.h"
 #include "Gradient.h"
 #include "SvgRect.h"
 #include "SvgCircle.h"
@@ -11,7 +11,9 @@
 #include "SvgPath.h"
 #include "SvgGroup.h"
 #include "Transform.h"
-#include "framework.h"
+#include <vector>
+#include <cmath>
+#include <algorithm>
 
 // Helper to safely clamp values
 template <typename T>
@@ -26,11 +28,14 @@ T clamp(T val, T minVal, T maxVal) {
 // Handles Solid Color, Linear Gradient, and Radial Gradient creation.
 // -------------------------------------------------------------------------
 Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
-    // 1. Check for "None" or fully transparent
     if (element.getFillType() == FillType::None) return nullptr;
-    if (element.getFillType() == FillType::SolidColor && element.getFillOpacity() <= 0.0f) return nullptr;
+    if (element.getFillType() == FillType::SolidColor) {
+        if (element.getFillOpacity() <= 0.0f) return nullptr;
+        Color c = element.getFill();
+        return new SolidBrush(Color((BYTE)(element.getFillOpacity() * 255), c.GetR(), c.GetG(), c.GetB()));
+    }
 
-    // 2. Handle Gradients
+    // Handle Gradients
     if (element.getFillType() == FillType::Gradient && doc != nullptr) {
         const Gradient* gradBase = doc->getGradient(element.getGradientId());
 
@@ -63,12 +68,11 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
 
                 // Protect against zero-area gradient
                 if (abs(p1.X - p2.X) < 0.001f && abs(p1.Y - p2.Y) < 0.001f) {
-                    return new SolidBrush(Color::Black);
+                    p2.X += 0.1f;
                 }
 
                 auto* brush = new LinearGradientBrush(p1, p2, Color::Black, Color::White);
 
-                // Apply Transform
                 brush->MultiplyTransform(&gradientTransformMatrix);
 
                 // Setup stops
@@ -99,8 +103,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
                     fy = rGrad->fy;
                 }
                 else {
-                    // ObjectBoundingBox logic
-                    // Standard SVG: r is relative to normalized diagonal length
+                    // ObjectBoundingBox
                     float diag = sqrt(bounds.Width * bounds.Width + bounds.Height * bounds.Height);
                     float normR = rGrad->r * (diag / sqrt(2.0f));
 
@@ -111,31 +114,22 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
                     fy = bounds.Y + rGrad->fy * bounds.Height;
                 }
 
-                // GDI+ PathGradientBrush needs a closed path to define the outer boundary
                 path.AddEllipse(cx - r, cy - r, r * 2, r * 2);
                 auto* brush = new PathGradientBrush(&path);
 
                 brush->SetCenterPoint(PointF(fx, fy));
                 brush->MultiplyTransform(&gradientTransformMatrix);
 
-                // Stops setup
                 int count = (int)gradBase->stops.size();
                 if (count > 0) {
                     std::vector<Color> colors(count);
                     std::vector<REAL> positions(count);
 
-                    // GDI+ PathGradientBrush: 0.0 is Boundary, 1.0 is Center
-                    // SVG: 0% is Center (focal), 100% is Edge
-                    // We must invert: GDI_Pos = 1.0 - SVG_Offset
+                    // Invert for GDI+: 0 is boundary, 1 is Center
                     for (int i = 0; i < count; ++i) {
                         colors[i] = gradBase->stops[i].color;
                         positions[i] = 1.0f - static_cast<REAL>(gradBase->stops[i].offset);
                     }
-
-                    // GDI+ requires positions to be increasing. Since we inverted, they are likely decreasing.
-                    // We must sort them or reverse them.
-                    // Assuming SVG stops came 0 -> 1, our array is now 1 -> 0.
-                    // Reverse to get 0 -> 1 for GDI+
                     std::reverse(colors.begin(), colors.end());
                     std::reverse(positions.begin(), positions.end());
 
@@ -145,13 +139,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
             }
         }
     }
-
-    // 3. Fallback: Solid Color
-    Color c = element.getFill();
-    return new SolidBrush(Color(
-        static_cast<BYTE>(element.getFillOpacity() * 255),
-        c.GetR(), c.GetG(), c.GetB()
-    ));
+    return new SolidBrush(Color::Black);
 }
 
 // -------------------------------------------------------------------------
@@ -171,6 +159,7 @@ static void applyTransform(Graphics& graphics, const Transform& transform) {
 // Renderer Implementation
 // -------------------------------------------------------------------------
 
+
 void Renderer::render(const SvgRect& r) {
     GraphicsState state = g.Save();
     applyTransform(g, r.getTransform());
@@ -189,6 +178,9 @@ void Renderer::render(const SvgRect& r) {
     }
     g.Restore(state);
 }
+
+// (The other render methods for Circle, Ellipse, Path, etc. remain the same structure 
+// but ensure they call createBrush(element, doc) and pass 'doc' correctly.)
 
 void Renderer::render(const SvgCircle& c) {
     GraphicsState state = g.Save();
@@ -353,8 +345,6 @@ void Renderer::render(const SvgText& t) {
     g.Restore(state);
 }
 
-// In Renderer.cpp
-
 void Renderer::render(const SvgPath& p) {
     GraphicsState state = g.Save();
     applyTransform(g, p.getTransform());
@@ -366,7 +356,7 @@ void Renderer::render(const SvgPath& p) {
     PointF cur(0, 0);
     PointF start(0, 0);
 
-    // Track the last control point for 'S' command reflection
+    // Track cubic control point for 'S' command reflection
     PointF lastCubicControl(0, 0);
     bool lastWasCubic = false;
 
@@ -403,7 +393,7 @@ void Renderer::render(const SvgPath& p) {
             if (isRelative) { x += cur.X; y += cur.Y; }
             path.StartFigure();
             cur = PointF(x, y); start = cur; figureStarted = true;
-            lastWasCubic = false; // Reset cubic tracking
+            lastWasCubic = false;
             cmd = isRelative ? 'l' : 'L';
             break;
         }
@@ -435,30 +425,18 @@ void Renderer::render(const SvgPath& p) {
             float x1 = parseNum(), y1 = parseNum();
             float x2 = parseNum(), y2 = parseNum();
             float x = parseNum(), y = parseNum();
-            if (isRelative) {
-                x1 += cur.X; y1 += cur.Y;
-                x2 += cur.X; y2 += cur.Y;
-                x += cur.X; y += cur.Y;
-            }
+            if (isRelative) { x1 += cur.X; y1 += cur.Y; x2 += cur.X; y2 += cur.Y; x += cur.X; y += cur.Y; }
             if (figureStarted) path.AddBezier(cur, PointF(x1, y1), PointF(x2, y2), PointF(x, y));
-
             cur = PointF(x, y);
-
-            // Save control point for next 'S' command
             lastCubicControl = PointF(x2, y2);
             lastWasCubic = true;
             break;
         }
         case 'S': {
-            float x2 = parseNum(), y2 = parseNum(); // 2nd Control Point
-            float x = parseNum(), y = parseNum();   // End Point
+            float x2 = parseNum(), y2 = parseNum();
+            float x = parseNum(), y = parseNum();
+            if (isRelative) { x2 += cur.X; y2 += cur.Y; x += cur.X; y += cur.Y; }
 
-            if (isRelative) {
-                x2 += cur.X; y2 += cur.Y;
-                x += cur.X; y += cur.Y;
-            }
-
-            // Calculate 1st Control Point (Reflection)
             PointF ctrl1 = cur;
             if (lastWasCubic) {
                 ctrl1.X = 2 * cur.X - lastCubicControl.X;
@@ -466,10 +444,7 @@ void Renderer::render(const SvgPath& p) {
             }
 
             if (figureStarted) path.AddBezier(cur, ctrl1, PointF(x2, y2), PointF(x, y));
-
             cur = PointF(x, y);
-
-            // Save control point for next 'S'
             lastCubicControl = PointF(x2, y2);
             lastWasCubic = true;
             break;
@@ -480,9 +455,7 @@ void Renderer::render(const SvgPath& p) {
             lastWasCubic = false;
             break;
         }
-        default:
-            i++;
-            break;
+        default: i++; break;
         }
     }
 

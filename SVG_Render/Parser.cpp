@@ -12,6 +12,7 @@
 #include <regex>
 #include <sstream>
 #include <algorithm>
+#include <string>
 
 // Helper to safely clamp values
 template <typename T>
@@ -22,6 +23,24 @@ T clamp(T val, T minVal, T maxVal) {
 }
 
 // --- Helper Functions ---
+
+// NEW: Helper to parse attributes like "50%" -> 0.5f or "0.5" -> 0.5f
+float parseCoordinate(const char* str, float defaultVal) {
+    if (!str) return defaultVal;
+    std::string s = str;
+    if (s.empty()) return defaultVal;
+
+    try {
+        float val = std::stof(s);
+        if (s.back() == '%') {
+            return val / 100.0f;
+        }
+        return val;
+    }
+    catch (...) {
+        return defaultVal;
+    }
+}
 
 static void parseTransformAttribute(const string& transformStr, SvgElement* element) {
     if (transformStr.empty()) return;
@@ -106,28 +125,26 @@ Color Parser::parseColor(const string& value) {
     return getColorByName(value);
 }
 
-// Updated to take SvgDocument for inheritance lookup
 unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem, SvgDocument* doc) {
     string tag = elem->Name();
     unique_ptr<Gradient> grad = nullptr;
 
-    // 1. Determine Type & Default Coordinates
+    // 1. Determine Type & Default Coordinates (Using parseCoordinate)
     if (tag == "linearGradient") {
         auto lGrad = make_unique<LinearGradient>();
-        // Default is 0% to 100% (0 to 1 in objectBoundingBox)
-        lGrad->x1 = elem->FloatAttribute("x1", 0.0f);
-        lGrad->y1 = elem->FloatAttribute("y1", 0.0f);
-        lGrad->x2 = elem->FloatAttribute("x2", 1.0f);
-        lGrad->y2 = elem->FloatAttribute("y2", 0.0f);
+        lGrad->x1 = parseCoordinate(elem->Attribute("x1"), 0.0f);
+        lGrad->y1 = parseCoordinate(elem->Attribute("y1"), 0.0f);
+        lGrad->x2 = parseCoordinate(elem->Attribute("x2"), 1.0f);
+        lGrad->y2 = parseCoordinate(elem->Attribute("y2"), 0.0f);
         grad = move(lGrad);
     }
     else if (tag == "radialGradient") {
         auto rGrad = make_unique<RadialGradient>();
-        rGrad->cx = elem->FloatAttribute("cx", 0.5f);
-        rGrad->cy = elem->FloatAttribute("cy", 0.5f);
-        rGrad->r = elem->FloatAttribute("r", 0.5f);
-        rGrad->fx = elem->FloatAttribute("fx", rGrad->cx);
-        rGrad->fy = elem->FloatAttribute("fy", rGrad->cy);
+        rGrad->cx = parseCoordinate(elem->Attribute("cx"), 0.5f);
+        rGrad->cy = parseCoordinate(elem->Attribute("cy"), 0.5f);
+        rGrad->r = parseCoordinate(elem->Attribute("r"), 0.5f);
+        rGrad->fx = parseCoordinate(elem->Attribute("fx"), rGrad->cx);
+        rGrad->fy = parseCoordinate(elem->Attribute("fy"), rGrad->cy);
         grad = move(rGrad);
     }
 
@@ -148,40 +165,32 @@ unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem, SvgDocume
     // 4. Transform (gradientTransform)
     const char* transAttr = elem->Attribute("gradientTransform");
     if (transAttr) {
-        // We reuse the existing parseTransform logic by creating a dummy element
         SvgGroup dummy;
         parseTransformAttribute(transAttr, &dummy);
         grad->transform = dummy.getTransform();
     }
 
-    // 5. Inheritance (xlink:href) - Handle this BEFORE parsing own stops
+    // 5. Inheritance (xlink:href)
     const char* href = elem->Attribute("xlink:href");
     if (!href) href = elem->Attribute("href");
 
     if (href && doc) {
         string linkId = href;
         if (linkId.size() > 1 && linkId[0] == '#') linkId = linkId.substr(1);
-
-        // Find parent in the document (assumes parent parsed first, which is standard in SVG defs)
         const Gradient* parent = doc->getGradient(linkId);
         if (parent) {
-            grad->stops = parent->stops; // Inherit stops
+            grad->stops = parent->stops;
         }
     }
 
-    // 6. Parse Stops (Children override inherited stops)
+    // 6. Parse Stops
     vector<GradientStop> ownStops;
     tinyxml2::XMLElement* child = elem->FirstChildElement();
     while (child) {
         if (string(child->Name()) == "stop") {
             GradientStop stop;
-            string offsetStr = child->Attribute("offset") ? child->Attribute("offset") : "0";
-            if (!offsetStr.empty() && offsetStr.back() == '%') {
-                stop.offset = stof(offsetStr) / 100.0f;
-            }
-            else {
-                stop.offset = stof(offsetStr);
-            }
+            // Use helper for offset (handles %)
+            stop.offset = parseCoordinate(child->Attribute("offset"), 0.0f);
             stop.offset = clamp(stop.offset, 0.0f, 1.0f);
 
             const char* colorAttr = child->Attribute("stop-color");
@@ -206,8 +215,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     if (!element) return nullptr;
     string tag = element->Name();
 
-    // --- Definitions & Gradients ---
-    // If it's a definition block, parse children immediately
+    // Definitions
     if (tag == "defs") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
@@ -221,14 +229,13 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         return nullptr;
     }
 
-    // If it's a standalone gradient
+    // Standalone Gradient
     if (tag == "linearGradient" || tag == "radialGradient") {
         auto grad = parseGradient(element, doc);
         if (grad && doc) doc->addGradient(move(grad));
         return nullptr;
     }
 
-    // --- Standard Shapes ---
     unique_ptr<SvgElement> svgObj = nullptr;
 
     if (tag == "g") svgObj = make_unique<SvgGroup>();
@@ -293,10 +300,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
 
     if (!svgObj) return nullptr;
 
-    // --- Attributes ---
-    bool isFillNone = false;
     const char* fillAttr = element->Attribute("fill");
-
     if (fillAttr) {
         string fillStr = fillAttr;
         if (fillStr.find("url(#") != string::npos) {
@@ -309,7 +313,6 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
             svgObj->setFill(parseColor(fillAttr));
             if (fillStr == "none") {
                 svgObj->setFillOpacity(0.0f);
-                isFillNone = true;
             }
         }
     }

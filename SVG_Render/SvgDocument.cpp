@@ -8,7 +8,7 @@ void SvgDocument::addElement(unique_ptr<SvgElement> element)
 }
 
 void SvgDocument::draw(Graphics& graphic) {
-    Renderer renderer(graphic);
+    Renderer renderer(graphic, this);
     for (auto& element : elements) {
         element->accept(renderer);
     }
