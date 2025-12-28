@@ -35,6 +35,10 @@ void SetGdiMatrix(const Transform& transform, Matrix& matrix) {
     );
 }
 
+float distSq(PointF p1, PointF p2) {
+    return (p1.X - p2.X) * (p1.X - p2.X) + (p1.Y - p2.Y) * (p1.Y - p2.Y);
+}
+
 Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
     if (element.getFillType() == FillType::None) return nullptr;
     if (element.getFillType() == FillType::SolidColor) {
@@ -48,18 +52,15 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
         if (!gradBase) return new SolidBrush(Color::Black);
 
         RectF bounds = element.getBoundingBox();
-
-        // 1. Calculate the Full Transformation Matrix
-        Matrix fullMatrix; // Identity by default
+        Matrix fullMatrix;
 
         if (gradBase->units == GradientUnits::ObjectBoundingBox) {
             fullMatrix.Translate(bounds.X, bounds.Y);
             fullMatrix.Scale(bounds.Width, bounds.Height);
         }
 
-        // Apply SVG gradientTransform
         Matrix svgTransform;
-        SetGdiMatrix(gradBase->transform, svgTransform); // FIX: Populate local matrix
+        SetGdiMatrix(gradBase->transform, svgTransform);
         fullMatrix.Multiply(&svgTransform, MatrixOrderPrepend);
 
         // --- LINEAR GRADIENT ---
@@ -68,7 +69,6 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
             PointF p1(lGrad->x1, lGrad->y1);
             PointF p2(lGrad->x2, lGrad->y2);
 
-            // Transform the points directly to screen space
             fullMatrix.TransformPoints(&p1);
             fullMatrix.TransformPoints(&p2);
 
@@ -76,6 +76,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
 
             auto* brush = new LinearGradientBrush(p1, p2, Color::Black, Color::White);
 
+            // Standard Linear Gradient setup
             int count = (int)gradBase->stops.size();
             if (count > 0) {
                 std::vector<Color> colors(count);
@@ -88,38 +89,128 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
             }
             return brush;
         }
-        // --- RADIAL GRADIENT ---
+        // --- RADIAL GRADIENT FIX ---
         else if (gradBase->type == GradientType::Radial) {
             const auto* rGrad = static_cast<const RadialGradient*>(gradBase);
 
+            PointF center(rGrad->cx, rGrad->cy);
+            float radius = rGrad->r;
+
+            // Transform center and calculate transformed radius vector
+            PointF radiusVec(rGrad->cx + rGrad->r, rGrad->cy);
+
+            // Apply transform to center and radius point
+            fullMatrix.TransformPoints(&center);
+            fullMatrix.TransformPoints(&radiusVec);
+
+            // Calculate effective radius in screen space (approximation)
+            float effectiveRadius = sqrt(pow(radiusVec.X - center.X, 2) + pow(radiusVec.Y - center.Y, 2));
+
+            // LOGIC FIX: Expand radius to cover the object bounding box (simulates "pad")
+            // We need the gradient to cover the element bounds in screen space.
+            // Since we can't easily get screen bounds here, we check against the 
+            // "transformed" element bounds (approximated).
+
+            // Simplified approach: Calculate distance to furthest corner of bounding box
+            // Note: This assumes `fullMatrix` maps to screen space for `UserSpace` or from `0..1` to `BBox`.
+            // We transform the BBox corners to find the max distance required.
+
+            PointF corners[4] = {
+                PointF(bounds.X, bounds.Y),
+                PointF(bounds.X + bounds.Width, bounds.Y),
+                PointF(bounds.X, bounds.Y + bounds.Height),
+                PointF(bounds.X + bounds.Width, bounds.Y + bounds.Height)
+            };
+
+            // If ObjectBoundingBox, corners are 0,0 to 1,1 before fullMatrix
+            if (gradBase->units == GradientUnits::ObjectBoundingBox) {
+                corners[0] = PointF(0, 0); corners[1] = PointF(1, 0);
+                corners[2] = PointF(0, 1); corners[3] = PointF(1, 1);
+            }
+            // If UserSpaceOnUse, corners are already bounds (but we need to apply element transform? 
+            // No, createBrush happens before element transform in Render method).
+            // Actually, for UserSpaceOnUse, 'fullMatrix' includes gradientTransform. 
+            // The brush coordinates align with element coordinates.
+
+            // To ensure coverage, we transform corners using the INVERSE of the gradient matrix?
+            // No, simpler: Transform corners using fullMatrix to compare with center.
+            fullMatrix.TransformPoints(corners, 4);
+
+            float maxDist = 0;
+            for (int i = 0; i < 4; i++) {
+                float d = sqrt(pow(corners[i].X - center.X, 2) + pow(corners[i].Y - center.Y, 2));
+                if (d > maxDist) maxDist = d;
+            }
+
+            // Scaling factor if we need to expand
+            float scale = 1.0f;
+            if (maxDist > effectiveRadius) {
+                scale = maxDist / effectiveRadius;
+                effectiveRadius = maxDist; // Expand the brush radius
+            }
+
             GraphicsPath path;
             path.AddEllipse(
-                rGrad->cx - rGrad->r,
-                rGrad->cy - rGrad->r,
-                rGrad->r * 2,
-                rGrad->r * 2
+                center.X - effectiveRadius,
+                center.Y - effectiveRadius,
+                effectiveRadius * 2,
+                effectiveRadius * 2
             );
-
-            // Transform the path to screen space so the brush bounds are correct
-            path.Transform(&fullMatrix);
 
             auto* brush = new PathGradientBrush(&path);
 
-            PointF center(rGrad->fx, rGrad->fy);
-            fullMatrix.TransformPoints(&center);
-            brush->SetCenterPoint(center);
+            // Transform focal point
+            PointF focus(rGrad->fx, rGrad->fy);
+            fullMatrix.TransformPoints(&focus);
+            brush->SetCenterPoint(focus);
 
+            // Stops Setup (remapped for expansion)
             int count = (int)gradBase->stops.size();
             if (count > 0) {
-                std::vector<Color> colors(count);
-                std::vector<REAL> positions(count);
-                for (int i = 0; i < count; ++i) {
-                    colors[i] = gradBase->stops[i].color;
-                    positions[i] = 1.0f - static_cast<REAL>(gradBase->stops[i].offset);
+                std::vector<Color> colors;
+                std::vector<REAL> positions;
+
+                // Add Original Stops (scaled)
+                // GDI+: 0=Boundary, 1=Center. SVG: 0=Center, 1=Boundary.
+                // We map SVG 0..1 to GDI 1..0
+                // With expansion: SVG 1.0 is now at position (1/scale) in GDI logic.
+
+                // SVG Offset X maps to distance X*OldRadius.
+                // New normalized distance = (X*OldRadius) / NewRadius = X / scale.
+
+                // Add pad stop (fill the rest with last color)
+                // Boundary (0.0 in GDI) corresponds to NewRadius.
+                // The Original Edge (OldRadius) is at 1.0 - (1.0/scale).
+
+                // We construct GDI+ positions (0..1)
+                // We iterate SVG stops (0..1)
+                // SVG Stop S maps to distance S*oldR.
+                // Norm Dist D = (S*oldR)/newR = S/scale.
+                // GDI Pos = 1.0 - D = 1.0 - (S/scale).
+
+                // First, add the "pad" area (from boundary to original edge)
+                // This corresponds to GDI positions 0.0 to (1.0 - 1.0/scale).
+                colors.push_back(gradBase->stops.back().color);
+                positions.push_back(0.0f); // Boundary (furthest point)
+
+                for (int i = count - 1; i >= 0; --i) {
+                    float svgOffset = gradBase->stops[i].offset; // 0..1
+                    float gdiPos = 1.0f - (svgOffset / scale);
+
+                    // Avoid duplicate positions which crash GDI+
+                    if (!positions.empty() && abs(positions.back() - gdiPos) < 0.001f) continue;
+
+                    colors.push_back(gradBase->stops[i].color);
+                    positions.push_back(gdiPos);
                 }
-                std::reverse(colors.begin(), colors.end());
-                std::reverse(positions.begin(), positions.end());
-                brush->SetInterpolationColors(colors.data(), positions.data(), count);
+
+                // Ensure the center (1.0) is covered
+                if (positions.back() < 1.0f) {
+                    colors.push_back(gradBase->stops[0].color);
+                    positions.push_back(1.0f);
+                }
+
+                brush->SetInterpolationColors(colors.data(), positions.data(), (INT)colors.size());
             }
             return brush;
         }

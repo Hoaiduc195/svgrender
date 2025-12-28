@@ -55,7 +55,7 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
         string args = match.str(2);
         replace(args.begin(), args.end(), ',', ' ');
         stringstream ss(args);
-        float val1 = 0, val2 = 0;
+        float val1 = 0, val2 = 0, val3 = 0; // Added val3
 
         if (command == "translate") {
             ss >> val1;
@@ -64,7 +64,16 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
         }
         else if (command == "rotate") {
             ss >> val1;
-            currentTrans.rotate(val1);
+            // Check for optional cx, cy arguments: rotate(angle, cx, cy)
+            if (ss >> val2 >> val3) {
+                // translate(cx, cy) -> rotate(angle) -> translate(-cx, -cy)
+                currentTrans.translate(val2, val3);
+                currentTrans.rotate(val1);
+                currentTrans.translate(-val2, -val3);
+            }
+            else {
+                currentTrans.rotate(val1);
+            }
         }
         else if (command == "scale") {
             ss >> val1;
@@ -80,7 +89,6 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
     }
     element->setTransform(currentTrans);
 }
-
 static vector<Vector2> parsePoints(const string& pointsStr) {
     vector<Vector2> pts;
     string cleanStr = pointsStr;
