@@ -53,9 +53,9 @@ void AddArcSegment(GraphicsPath& path, float cx, float cy, float rx, float ry,
     PointF cp2 = transformPoint(x_cp2, y_cp2);
     float x_end = rx * c2, y_end = ry * s2;
     PointF end = transformPoint(x_end, y_end);
-    PointF lastPoint;
-    path.GetLastPoint(&lastPoint);
-    path.AddBezier(lastPoint, cp1, cp2, end);
+    float x_start = rx * c1, y_start = ry * s1;
+    PointF start = transformPoint(x_start, y_start);
+    path.AddBezier(start, cp1, cp2, end);
 }
 
 void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
@@ -191,7 +191,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
             if (rGrad->r > 0.0001f && maxDist > rGrad->r) {
                 expansion = maxDist / rGrad->r;
             }
-
+            expansion *= 1.5f;
             float expRadius = rGrad->r * expansion;
             GraphicsPath path;
             path.AddEllipse(rGrad->cx - expRadius, rGrad->cy - expRadius, 2 * expRadius, 2 * expRadius);
