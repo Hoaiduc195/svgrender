@@ -18,6 +18,6 @@ float SvgLine::getY2() const {
     return y2; 
 }
 
-void SvgLine::accept(Renderer& renderer) {
+void SvgLine::accept(Renderer& renderer) const {
     renderer.render(*this);
 }

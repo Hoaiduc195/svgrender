@@ -19,7 +19,7 @@ float SvgEllipse::getRy() const {
 }
 
 
-void SvgEllipse::accept(Renderer& renderer) {
+void SvgEllipse::accept(Renderer& renderer) const {
     renderer.render(*this);
 }
 

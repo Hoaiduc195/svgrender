@@ -11,7 +11,7 @@ public:
 	~SvgPath() = default;
 	SvgPath(const string& path);
 	SvgPath& operator=(const SvgPath& other);
-	void accept(Renderer& renderer);
+	void accept(Renderer& renderer) const override;
 	
 	// Getter 
 	const string& getPathData() const;

@@ -14,7 +14,7 @@ class SvgRect : public SvgElement {
         float ry;
     public:
         SvgRect(float x, float y, float width, float height, float rx, float ry);
-        void accept(Renderer& renderer) override;
+        void accept(Renderer& renderer) const override;
 
         // Getters
         float getX() const;

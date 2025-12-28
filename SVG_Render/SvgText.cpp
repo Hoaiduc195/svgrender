@@ -33,7 +33,7 @@ SvgText::SvgText(float _x, float _y, float _fontSize, const string& _content, co
 	textAnchor = _textAnchor;
 }
 
-void SvgText::accept(Renderer& renderer) {
+void SvgText::accept(Renderer& renderer) const {
     renderer.render(*this);
 }
 

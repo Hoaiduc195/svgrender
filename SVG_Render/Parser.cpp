@@ -1,5 +1,4 @@
-﻿#pragma once
-#include "Parser.h"
+﻿#include "Parser.h"
 #include "SvgCircle.h"
 #include "SvgRect.h"
 #include "SvgLine.h"
@@ -13,13 +12,19 @@
 #include <sstream>
 #include <algorithm>
 
-//Ham phan tich chuoi Transform
+// Helper to safely clamp values (Fixes C3861)
+template <typename T>
+T clamp(T val, T minVal, T maxVal) {
+    if (val < minVal) return minVal;
+    if (val > maxVal) return maxVal;
+    return val;
+}
+
+// --- Helper Functions ---
+
 static void parseTransformAttribute(const string& transformStr, SvgElement* element) {
     if (transformStr.empty()) return;
-
-    //Lay ban sao Transform hien tai
     Transform currentTrans = element->getTransform();
-
     regex re("([a-z]+)\\s*\\(([^)]+)\\)");
     auto words_begin = sregex_iterator(transformStr.begin(), transformStr.end(), re);
     auto words_end = sregex_iterator();
@@ -28,7 +33,6 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
         smatch match = *i;
         string command = match.str(1);
         string args = match.str(2);
-
         replace(args.begin(), args.end(), ',', ' ');
         stringstream ss(args);
         float val1 = 0, val2 = 0;
@@ -48,17 +52,13 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
             currentTrans.scale(val1, val2);
         }
     }
-
-    //set nguoc vao doi tuong
     element->setTransform(currentTrans);
 }
 
 static vector<Vector2> parsePoints(const string& pointsStr) {
     vector<Vector2> pts;
     string cleanStr = pointsStr;
-    // Thay the dau phay bang khoang trang de xu ly truong hop "10,10" va "10 10" dong nhat
     replace(cleanStr.begin(), cleanStr.end(), ',', ' ');
-
     stringstream ss(cleanStr);
     float x, y;
     while (ss >> x >> y) {
@@ -67,13 +67,12 @@ static vector<Vector2> parsePoints(const string& pointsStr) {
     return pts;
 }
 
+// --- Parser Class Implementation ---
+
 Color Parser::parseColor(const string& value) {
     if (value.empty() || value == "none") return Color(0, 0, 0, 0);
-
-    //1.value kieu url
     if (value.find("url(") != string::npos) return Color::Black;
 
-    // 2. Xu ly mau HEX
     if (value[0] == '#') {
         string hexStr = value.substr(1);
         unsigned long val = strtoul(hexStr.c_str(), nullptr, 16);
@@ -88,77 +87,90 @@ Color Parser::parseColor(const string& value) {
         }
     }
 
-    // Xu ly RGB
     static const regex re(R"(rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\))");
     smatch match;
     if (regex_search(value, match, re)) {
         int r = stoi(match[1]);
         int g = stoi(match[2]);
         int b = stoi(match[3]);
-        if (r > 255) r = 255;
-        if (g > 255) g = 255;
-        if (b > 255) b = 255;
-        return Color(255, r, g, b);
+        return Color(255, clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255));
     }
 
-    // Xu ly ten mau co ban
     return getColorByName(value);
 }
 
-LinearGradient Parser::parseLinearGradient(tinyxml2::XMLElement* elem) {
-    LinearGradient grad;
-    grad.id = elem->Attribute("id") ? elem->Attribute("id") : "";
-    grad.x1 = elem->FloatAttribute("x1", 0);
-    grad.y1 = elem->FloatAttribute("y1", 0);
-    grad.x2 = elem->FloatAttribute("x2", 100);
-    grad.y2 = elem->FloatAttribute("y2", 0);
+unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem) {
+    string tag = elem->Name();
+    unique_ptr<Gradient> grad = nullptr;
 
-    tinyxml2::XMLElement* child = elem->FirstChildElement();
-    while (child) {
-        if (string(child->Name()) == "stop") {
-            GradientStop stop;
-            stop.offset = child->FloatAttribute("offset", 0);
-            const char* colorAttr = child->Attribute("stop-color");
-            stop.color = colorAttr ? Parser::parseColor(colorAttr) : Color::Black;
-            grad.stops.push_back(stop);
+    if (tag == "linearGradient") {
+        auto lGrad = make_unique<LinearGradient>();
+        lGrad->x1 = elem->FloatAttribute("x1", 0);
+        lGrad->y1 = elem->FloatAttribute("y1", 0);
+        lGrad->x2 = elem->FloatAttribute("x2", 100);
+        lGrad->y2 = elem->FloatAttribute("y2", 0);
+        grad = move(lGrad);
+    }
+    else if (tag == "radialGradient") {
+        auto rGrad = make_unique<RadialGradient>();
+        rGrad->cx = elem->FloatAttribute("cx", 0.5f);
+        rGrad->cy = elem->FloatAttribute("cy", 0.5f);
+        rGrad->r = elem->FloatAttribute("r", 0.5f);
+        rGrad->fx = elem->FloatAttribute("fx", rGrad->cx);
+        rGrad->fy = elem->FloatAttribute("fy", rGrad->cy);
+        grad = move(rGrad);
+    }
+
+    if (grad) {
+        grad->id = elem->Attribute("id") ? elem->Attribute("id") : "";
+        tinyxml2::XMLElement* child = elem->FirstChildElement();
+        while (child) {
+            if (string(child->Name()) == "stop") {
+                GradientStop stop;
+                string offsetStr = child->Attribute("offset") ? child->Attribute("offset") : "0";
+                if (!offsetStr.empty() && offsetStr.back() == '%') {
+                    stop.offset = stof(offsetStr) / 100.0f;
+                }
+                else {
+                    stop.offset = stof(offsetStr);
+                }
+
+                const char* colorAttr = child->Attribute("stop-color");
+                stop.color = colorAttr ? Parser::parseColor(colorAttr) : Color::Black;
+                grad->stops.push_back(stop);
+            }
+            child = child->NextSiblingElement();
         }
-        child = child->NextSiblingElement();
     }
     return grad;
 }
 
-unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* element, const SvgElement* parent,
-    std::map<string, LinearGradient>& declaredGradients) {
+unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* element, const SvgElement* parent, SvgDocument* doc) {
     if (!element) return nullptr;
     string tag = element->Name();
 
-    // 1. Xử ly container chua dinh nghia (defs)
     if (tag == "defs") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
-            if (string(child->Name()) == "linearGradient") {
-                LinearGradient grad = parseLinearGradient(child);
-                if (!grad.id.empty()) {
-                    declaredGradients[grad.id] = grad;
-                }
+            string childTag = child->Name();
+            if (childTag == "linearGradient" || childTag == "radialGradient") {
+                auto grad = parseGradient(child);
+                if (grad && doc) doc->addGradient(move(grad));
             }
             child = child->NextSiblingElement();
         }
-        return nullptr; // defs kh hien thi gi ca
+        return nullptr;
     }
 
-    // 2. Xu ly Linear Gradient ngoai defs (neu co)
-    if (tag == "linearGradient") {
-        LinearGradient grad = parseLinearGradient(element);
-        if (!grad.id.empty()) declaredGradients[grad.id] = grad;
+    if (tag == "linearGradient" || tag == "radialGradient") {
+        auto grad = parseGradient(element);
+        if (grad && doc) doc->addGradient(move(grad));
         return nullptr;
     }
 
     unique_ptr<SvgElement> svgObj = nullptr;
-    if (tag == "g") {
-        auto group = make_unique<SvgGroup>();
-        svgObj = move(group);
-    }
+
+    if (tag == "g") svgObj = make_unique<SvgGroup>();
     else if (tag == "path") {
         string d = element->Attribute("d") ? element->Attribute("d") : "";
         svgObj = make_unique<SvgPath>(d);
@@ -195,60 +207,42 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     else if (tag == "polygon") {
         const char* pointsAttr = element->Attribute("points");
         vector<Vector2> pts;
-        if (pointsAttr) {
-            pts = parsePoints(pointsAttr);
-        }
-        //khep kin
+        if (pointsAttr) pts = parsePoints(pointsAttr);
         svgObj = make_unique<SvgPolygon>(pts, true);
     }
     else if (tag == "polyline") {
         const char* pointsAttr = element->Attribute("points");
         vector<Vector2> pts;
-        if (pointsAttr) {
-            pts = parsePoints(pointsAttr);
-        }
-        svgObj = make_unique<SvgPolyline>(pts, false); //kh khep kin
+        if (pointsAttr) pts = parsePoints(pointsAttr);
+        svgObj = make_unique<SvgPolyline>(pts, false);
     }
     else if (tag == "text") {
         float x = element->FloatAttribute("x", 0);
         float y = element->FloatAttribute("y", 0);
         float dx = element->FloatAttribute("dx", 0);
         float dy = element->FloatAttribute("dy", 0);
-        //cong don do lech
-        x += dx;
-        y += dy;
+        x += dx; y += dy;
         float fontSize = element->FloatAttribute("font-size", 12.0f);
-
         const char* txt = element->GetText();
         string content = txt ? txt : "";
-
         const char* textAnchorAttr = element->Attribute("text-anchor");
-		string textAnchor = "start";
-        if (textAnchorAttr) {
-			textAnchor = textAnchorAttr;
-		}
-
+        string textAnchor = textAnchorAttr ? textAnchorAttr : "start";
         svgObj = make_unique<SvgText>(x, y, fontSize, content, textAnchor);
     }
+
     if (!svgObj) return nullptr;
 
-    // Xu ly thuoc tinh fill co gradient ---
     bool isFillNone = false;
     const char* fillAttr = element->Attribute("fill");
 
     if (fillAttr) {
         string fillStr = fillAttr;
-        // TH1: La gradien url(#id)
         if (fillStr.find("url(#") != string::npos) {
             size_t start = fillStr.find("#") + 1;
             size_t end = fillStr.find(")");
             string id = fillStr.substr(start, end - start);
-
-            if (declaredGradients.find(id) != declaredGradients.end()) {
-                svgObj->setGradient(declaredGradients[id]);
-            }
+            svgObj->setFillGradient(id);
         }
-        // TH2: La don sac (Hex, RGB, name)
         else {
             svgObj->setFill(parseColor(fillAttr));
             if (fillStr == "none") {
@@ -258,27 +252,21 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         }
     }
     else if (parent) {
-        if (parent->isGradient()) {
-            svgObj->setGradient(parent->getGradient());
+        if (parent->getFillType() == FillType::Gradient) {
+            svgObj->setFillGradient(parent->getGradientId());
         }
         else {
             svgObj->setFill(parent->getFill());
         }
-    }
-
-    // 2. Fill Opacity
-    if (element->Attribute("fill-opacity")) {
-        svgObj->setFillOpacity(element->FloatAttribute("fill-opacity"));
-    }
-    else if (parent && !isFillNone) {
         svgObj->setFillOpacity(parent->getFillOpacity());
     }
 
-    //stroke &stroke opacity
-    const char* strokeAttr = element->Attribute("stroke");
-    bool hasStrokeAttr = (strokeAttr != nullptr);
+    if (element->Attribute("fill-opacity")) {
+        svgObj->setFillOpacity(element->FloatAttribute("fill-opacity"));
+    }
 
-    if (hasStrokeAttr) {
+    const char* strokeAttr = element->Attribute("stroke");
+    if (strokeAttr) {
         svgObj->setStroke(parseColor(strokeAttr));
         if (string(strokeAttr) == "none") {
             svgObj->setStrokeOpacity(0.0f);
@@ -292,12 +280,9 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         svgObj->setStrokeOpacity(parent->getStrokeOpacity());
     }
 
-    // Stroke Opacity
     if (element->Attribute("stroke-opacity")) {
         svgObj->setStrokeOpacity(element->FloatAttribute("stroke-opacity"));
     }
-
-    // Stroke Width
     if (element->Attribute("stroke-width")) {
         svgObj->setStrokeWidth(element->FloatAttribute("stroke-width"));
     }
@@ -305,46 +290,33 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         svgObj->setStrokeWidth(parent->getStrokeWidth());
     }
 
-    // Transform
-    // Transform khong ke thua theo kieu copy gia tri nhu color
-    // Transform của cha tac dong len con thong qua cau truc long nhau Group
-    // nen chi parse transform cua the nay thoi
     const char* transformAttr = element->Attribute("transform");
     if (transformAttr) {
         parseTransformAttribute(transformAttr, svgObj.get());
     }
 
-    /*if (tag == "text") {
-        const char* textAnchorAttr = element->Attribute("text-anchor");
-        if (textAnchorAttr) {
-            SvgText* textPtr = static_cast<SvgText*>(svgObj.get());
-            textPtr->setTextAnchor(textAnchorAttr);
-        }
-    }*/
-
-    //Neu la group, tiep tuc de quy
     if (tag == "g") {
         SvgGroup* groupPtr = static_cast<SvgGroup*>(svgObj.get());
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
-            auto childObj = parseElementRecursive(child, groupPtr, declaredGradients); // Truyen map xuong
+            auto childObj = parseElementRecursive(child, groupPtr, doc);
             if (childObj) {
                 groupPtr->addElement(move(childObj));
             }
             child = child->NextSiblingElement();
         }
     }
+
     return svgObj;
 }
 
 void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     SvgGroup defaultContext;
-    std::map<string, LinearGradient> gradients; //map tam de luu gradient trong qua trinh parse
+
     if (string(element->Name()) == "svg") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
-            // Truyền defaultContext vào làm cha
-            auto obj = parseElementRecursive(child, &defaultContext, gradients);
+            auto obj = parseElementRecursive(child, &defaultContext, &doc);
             if (obj) {
                 doc.addElement(move(obj));
             }
@@ -352,8 +324,7 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
         }
     }
     else {
-        // TH file svg khong co the <svg> 
-        auto obj = parseElementRecursive(element, &defaultContext, gradients);
+        auto obj = parseElementRecursive(element, &defaultContext, &doc);
         if (obj) {
             doc.addElement(move(obj));
         }
@@ -361,19 +332,15 @@ void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
 }
 
 unique_ptr<SvgDocument> Parser::parseSVG(const string& xmlText) {
-    auto svgDoc = make_unique<SvgDocument>(); //chua danh sach cac phan tu svg
-
+    auto svgDoc = make_unique<SvgDocument>();
     tinyxml2::XMLDocument doc;
     if (doc.Parse(xmlText.c_str()) != tinyxml2::XML_SUCCESS) {
-        cerr << "Parse error!\n";
         return nullptr;
     }
 
     tinyxml2::XMLElement* root = doc.RootElement();
-    if (!root || string(root->Name()) != "svg") {
-        cerr << "Not a valid SVG file.\n";
-        return nullptr;
-    }
-    parseElement(root, *svgDoc); //duyet cay tu <svg> xuong de them cac doi tuong vo doc
+    if (!root) return nullptr;
+
+    parseElement(root, *svgDoc);
     return svgDoc;
 }

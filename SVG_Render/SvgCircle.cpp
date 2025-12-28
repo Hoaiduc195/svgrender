@@ -15,6 +15,6 @@ float SvgCircle::getR() const {
     return r; 
 }
 
-void SvgCircle::accept(Renderer& renderer) {
+void SvgCircle::accept(Renderer& renderer) const {
     renderer.render(*this);
 }

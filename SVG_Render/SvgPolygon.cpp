@@ -22,6 +22,6 @@ const vector<Vector2>& SvgPolygon::getPoints() const {
 	return points; 
 }
 
-void SvgPolygon::accept(Renderer& renderer) {
+void SvgPolygon::accept(Renderer& renderer) const {
 	renderer.render(*this);
 }

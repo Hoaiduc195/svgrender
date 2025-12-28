@@ -14,7 +14,7 @@ public:
 	SvgPolyline(const SvgPolyline& other);
 	SvgPolyline(vector<Vector2> pts, bool closed);
 	~SvgPolyline();
-	void accept(Renderer& renderer) override;
+	void accept(Renderer& renderer) const override;
 
 	// Getter
 	const vector<Vector2>& getPoints() const;

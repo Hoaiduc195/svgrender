@@ -23,6 +23,7 @@
 	#include <fstream>
 	#include <sstream>
 	#include <vector>
+	#include <unordered_map>
 	using namespace Gdiplus;
 	using namespace std;
 	#pragma comment (lib, "Gdiplus.lib")

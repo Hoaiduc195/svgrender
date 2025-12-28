@@ -24,6 +24,6 @@ float SvgRect::getRy() const {
     return ry; 
 }
 
-void SvgRect::accept(Renderer& renderer) {
+void SvgRect::accept(Renderer& renderer) const {
     renderer.render(*this);
 }

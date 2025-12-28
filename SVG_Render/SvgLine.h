@@ -12,7 +12,7 @@ class SvgLine : public SvgElement {
         float y2;
     public:
         SvgLine(float x1, float y1, float x2, float y2);
-        void accept(Renderer& renderer) override;
+        void accept(Renderer& renderer) const override;
             
         //Getters
         float getX1() const;

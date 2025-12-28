@@ -1,46 +1,54 @@
 #pragma once
-#include "framework.h"
-#include "Transform.h"
 #include "Color.h"
+#include "Transform.h"
+#include "framework.h"
 
-template <typename T>
-T clamp(T value, T minVal, T maxVal) {
-    return max(minVal, min(value, maxVal));
-}
+// Enum to determine what kind of fill this element uses
+enum class FillType {
+    None,
+    SolidColor,
+    Gradient
+};
 
-class Renderer; // forward
+class Renderer; // Forward declaration
 
 class SvgElement {
-    protected:
-        Color fill;
-        Color stroke;
-        float strokeWidth;
-        float strokeOpacity;
-        float fillOpacity;
-		Transform transform;
-        bool hasGradient = false;
-        LinearGradient gradient;
-    public:
-        virtual void accept(Renderer& renderer) = 0;
-        virtual ~SvgElement() = default;
-        SvgElement();
+protected:
+    // Fill Properties
+    FillType fillType;
+    Color fill;             // Used if fillType == SolidColor
+    std::string gradientId; // Used if fillType == Gradient
+    float fillOpacity;
 
-        // Setters
-        void setFill(const Color& fillColor);
-        void setStroke(const Color& strokeColor);
-        void setStrokeWidth(float width);
-        void setStrokeOpacity(float opacity);
-        void setFillOpacity(float opacity);
-        void setTransform(const Transform& t);
-        void setGradient(const LinearGradient& grad);
+    // Stroke Properties
+    Color stroke;
+    float strokeWidth;
+    float strokeOpacity;
 
-        // Getters for renderer
-        const Color& getFill() const;
-        const Color& getStroke() const;
-        float getStrokeWidth() const;
-        float getStrokeOpacity() const;
-        float getFillOpacity() const;
-        Transform getTransform() const;
-        bool isGradient() const;
-        const LinearGradient& getGradient() const;
+    Transform transform;
+
+public:
+    SvgElement();
+    virtual ~SvgElement() = default;
+
+    // Setters
+    void setFill(const Color& color);
+    void setFillGradient(const std::string& id); // New method
+    void setFillOpacity(float opacity);
+    void setStroke(const Color& color);
+    void setStrokeWidth(float width);
+    void setStrokeOpacity(float opacity);
+    void setTransform(const Transform& transform);
+
+    // Getters
+    FillType getFillType() const { return fillType; }
+    const Color& getFill() const;
+    const std::string& getGradientId() const; // New getter
+    float getFillOpacity() const;
+    const Color& getStroke() const;
+    float getStrokeWidth() const;
+    float getStrokeOpacity() const;
+    Transform getTransform() const;
+
+    virtual void accept(Renderer& renderer) const = 0;
 };

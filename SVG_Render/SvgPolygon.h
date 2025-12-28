@@ -14,7 +14,7 @@ public:
 	SvgPolygon(const SvgPolygon& other);
 	SvgPolygon(vector<Vector2> pts, bool closed);
 	~SvgPolygon();
-	void accept(Renderer& renderer) override;
+	void accept(Renderer& renderer) const override;
 
 	// Getter
 	const vector<Vector2>& getPoints() const;

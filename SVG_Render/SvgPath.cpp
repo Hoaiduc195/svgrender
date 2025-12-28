@@ -14,6 +14,6 @@ const string& SvgPath::getPathData() const {
 	return pathData;
 }
 
-void SvgPath::accept(Renderer& renderer) {
+void SvgPath::accept(Renderer& renderer) const {
 	renderer.render(*this);
 }

@@ -10,7 +10,7 @@ public:
 	~SvgGroup() = default;
 
 	void addElement(unique_ptr<SvgElement> element);
-	void accept(Renderer& renderer);
+	void accept(Renderer& renderer) const override;
 	
 	// Getter for accessing child elements
 	const vector<unique_ptr<SvgElement>>& getElements() const;

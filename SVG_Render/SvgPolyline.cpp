@@ -22,6 +22,6 @@ const vector<Vector2>& SvgPolyline::getPoints() const {
     return points; 
 }
 
-void SvgPolyline::accept(Renderer& renderer) {
+void SvgPolyline::accept(Renderer& renderer) const {
     renderer.render(*this);
 }
