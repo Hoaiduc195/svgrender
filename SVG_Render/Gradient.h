@@ -17,6 +17,8 @@ enum class GradientUnits {
 struct GradientStop {
     float offset;
     Color color;
+
+	GradientStop() : offset(0), color(Color::AliceBlue) {}
 };
 
 struct Gradient {
