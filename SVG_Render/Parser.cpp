@@ -24,22 +24,16 @@ T clamp(T val, T minVal, T maxVal) {
 
 // --- Helper Functions ---
 
-// NEW: Helper to parse attributes like "50%" -> 0.5f or "0.5" -> 0.5f
 float parseCoordinate(const char* str, float defaultVal) {
     if (!str) return defaultVal;
     std::string s = str;
     if (s.empty()) return defaultVal;
-
     try {
         float val = std::stof(s);
-        if (s.back() == '%') {
-            return val / 100.0f;
-        }
+        if (s.back() == '%') return val / 100.0f;
         return val;
     }
-    catch (...) {
-        return defaultVal;
-    }
+    catch (...) { return defaultVal; }
 }
 
 static void parseTransformAttribute(const string& transformStr, SvgElement* element) {
@@ -55,7 +49,7 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
         string args = match.str(2);
         replace(args.begin(), args.end(), ',', ' ');
         stringstream ss(args);
-        float val1 = 0, val2 = 0, val3 = 0; // Added val3
+        float val1 = 0, val2 = 0, val3 = 0;
 
         if (command == "translate") {
             ss >> val1;
@@ -64,9 +58,7 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
         }
         else if (command == "rotate") {
             ss >> val1;
-            // Check for optional cx, cy arguments: rotate(angle, cx, cy)
             if (ss >> val2 >> val3) {
-                // translate(cx, cy) -> rotate(angle) -> translate(-cx, -cy)
                 currentTrans.translate(val2, val3);
                 currentTrans.rotate(val1);
                 currentTrans.translate(-val2, -val3);
@@ -89,6 +81,7 @@ static void parseTransformAttribute(const string& transformStr, SvgElement* elem
     }
     element->setTransform(currentTrans);
 }
+
 static vector<Vector2> parsePoints(const string& pointsStr) {
     vector<Vector2> pts;
     string cleanStr = pointsStr;
@@ -120,7 +113,6 @@ Color Parser::parseColor(const string& value) {
             return Color(255, r * 17, g * 17, b * 17);
         }
     }
-
     static const regex re(R"(rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\))");
     smatch match;
     if (regex_search(value, match, re)) {
@@ -129,7 +121,6 @@ Color Parser::parseColor(const string& value) {
         int b = stoi(match[3]);
         return Color(255, clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255));
     }
-
     return getColorByName(value);
 }
 
@@ -137,7 +128,6 @@ unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem, SvgDocume
     string tag = elem->Name();
     unique_ptr<Gradient> grad = nullptr;
 
-    // 1. Determine Type & Default Coordinates (Using parseCoordinate)
     if (tag == "linearGradient") {
         auto lGrad = make_unique<LinearGradient>();
         lGrad->x1 = parseCoordinate(elem->Attribute("x1"), 0.0f);
@@ -158,19 +148,11 @@ unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem, SvgDocume
 
     if (!grad) return nullptr;
 
-    // 2. ID
     grad->id = elem->Attribute("id") ? elem->Attribute("id") : "";
 
-    // 3. Units
     const char* unitsAttr = elem->Attribute("gradientUnits");
-    if (unitsAttr && string(unitsAttr) == "userSpaceOnUse") {
-        grad->units = GradientUnits::UserSpaceOnUse;
-    }
-    else {
-        grad->units = GradientUnits::ObjectBoundingBox;
-    }
+    grad->units = (unitsAttr && string(unitsAttr) == "userSpaceOnUse") ? GradientUnits::UserSpaceOnUse : GradientUnits::ObjectBoundingBox;
 
-    // 4. Transform (gradientTransform)
     const char* transAttr = elem->Attribute("gradientTransform");
     if (transAttr) {
         SvgGroup dummy;
@@ -178,44 +160,37 @@ unique_ptr<Gradient> Parser::parseGradient(tinyxml2::XMLElement* elem, SvgDocume
         grad->transform = dummy.getTransform();
     }
 
-    // 5. Inheritance (xlink:href)
     const char* href = elem->Attribute("xlink:href");
     if (!href) href = elem->Attribute("href");
-
     if (href && doc) {
         string linkId = href;
         if (linkId.size() > 1 && linkId[0] == '#') linkId = linkId.substr(1);
         const Gradient* parent = doc->getGradient(linkId);
-        if (parent) {
-            grad->stops = parent->stops;
-        }
+        if (parent) grad->stops = parent->stops;
     }
 
-    // 6. Parse Stops
-    vector<GradientStop> ownStops;
     tinyxml2::XMLElement* child = elem->FirstChildElement();
+    vector<GradientStop> ownStops;
     while (child) {
         if (string(child->Name()) == "stop") {
             GradientStop stop;
-            // Use helper for offset (handles %)
             stop.offset = parseCoordinate(child->Attribute("offset"), 0.0f);
             stop.offset = clamp(stop.offset, 0.0f, 1.0f);
 
             const char* colorAttr = child->Attribute("stop-color");
-            float stopOpacity = child->FloatAttribute("stop-opacity", 1.0f);
+            float stopOpacity = 1.0f;
+            if (child->QueryFloatAttribute("stop-opacity", &stopOpacity) != tinyxml2::XML_SUCCESS) {
+                stopOpacity = 1.0f;
+            }
 
             Color c = colorAttr ? Parser::parseColor(colorAttr) : Color::Black;
             stop.color = Color((unsigned char)(stopOpacity * 255), c.GetR(), c.GetG(), c.GetB());
-
             ownStops.push_back(stop);
         }
         child = child->NextSiblingElement();
     }
 
-    if (!ownStops.empty()) {
-        grad->stops = ownStops;
-    }
-
+    if (!ownStops.empty()) grad->stops = ownStops;
     return grad;
 }
 
@@ -223,7 +198,6 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     if (!element) return nullptr;
     string tag = element->Name();
 
-    // Definitions
     if (tag == "defs") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
@@ -237,7 +211,6 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         return nullptr;
     }
 
-    // Standalone Gradient
     if (tag == "linearGradient" || tag == "radialGradient") {
         auto grad = parseGradient(element, doc);
         if (grad && doc) doc->addGradient(move(grad));
@@ -308,6 +281,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
 
     if (!svgObj) return nullptr;
 
+    // --- 1. Standard Attributes Parsing ---
     const char* fillAttr = element->Attribute("fill");
     if (fillAttr) {
         string fillStr = fillAttr;
@@ -319,9 +293,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         }
         else {
             svgObj->setFill(parseColor(fillAttr));
-            if (fillStr == "none") {
-                svgObj->setFillOpacity(0.0f);
-            }
+            if (fillStr == "none") svgObj->setFillOpacity(0.0f);
         }
     }
     else if (parent) {
@@ -341,79 +313,103 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     const char* strokeAttr = element->Attribute("stroke");
     if (strokeAttr) {
         svgObj->setStroke(parseColor(strokeAttr));
-        if (string(strokeAttr) == "none") {
-            svgObj->setStrokeOpacity(0.0f);
-        }
-        else {
-            svgObj->setStrokeOpacity(1.0f);
-        }
+        if (string(strokeAttr) == "none") svgObj->setStrokeOpacity(0.0f);
+        else svgObj->setStrokeOpacity(1.0f);
     }
     else if (parent) {
         svgObj->setStroke(parent->getStroke());
         svgObj->setStrokeOpacity(parent->getStrokeOpacity());
     }
 
-    if (element->Attribute("stroke-opacity")) {
-        svgObj->setStrokeOpacity(element->FloatAttribute("stroke-opacity"));
-    }
-    if (element->Attribute("stroke-width")) {
-        svgObj->setStrokeWidth(element->FloatAttribute("stroke-width"));
-    }
-    else if (parent) {
-        svgObj->setStrokeWidth(parent->getStrokeWidth());
+    if (element->Attribute("stroke-opacity")) svgObj->setStrokeOpacity(element->FloatAttribute("stroke-opacity"));
+    if (element->Attribute("stroke-width")) svgObj->setStrokeWidth(element->FloatAttribute("stroke-width"));
+    else if (parent) svgObj->setStrokeWidth(parent->getStrokeWidth());
+
+    // --- 2. NEW: STYLE Attribute Parsing (Overrides standard attributes) ---
+    const char* styleAttr = element->Attribute("style");
+    if (styleAttr) {
+        string styleStr = styleAttr;
+        stringstream ss(styleStr);
+        string item;
+        while (getline(ss, item, ';')) {
+            size_t colon = item.find(':');
+            if (colon == string::npos) continue;
+
+            string key = item.substr(0, colon);
+            string val = item.substr(colon + 1);
+
+            // Trim whitespace
+            key.erase(0, key.find_first_not_of(" \t\r\n"));
+            key.erase(key.find_last_not_of(" \t\r\n") + 1);
+            val.erase(0, val.find_first_not_of(" \t\r\n"));
+            val.erase(val.find_last_not_of(" \t\r\n") + 1);
+
+            if (key == "fill") {
+                if (val.find("url(#") != string::npos) {
+                    size_t s = val.find("#") + 1;
+                    size_t e = val.find(")");
+                    svgObj->setFillGradient(val.substr(s, e - s));
+                }
+                else {
+                    svgObj->setFill(parseColor(val));
+                    if (val == "none") svgObj->setFillOpacity(0.0f);
+                    else svgObj->setFillOpacity(1.0f); // Reset opacity if color overrides
+                }
+            }
+            else if (key == "fill-opacity") {
+                svgObj->setFillOpacity(stof(val));
+            }
+            else if (key == "stroke") {
+                svgObj->setStroke(parseColor(val));
+                if (val == "none") svgObj->setStrokeOpacity(0.0f);
+                else svgObj->setStrokeOpacity(1.0f);
+            }
+            else if (key == "stroke-opacity") {
+                svgObj->setStrokeOpacity(stof(val));
+            }
+            else if (key == "stroke-width") {
+                svgObj->setStrokeWidth(stof(val));
+            }
+        }
     }
 
     const char* transformAttr = element->Attribute("transform");
-    if (transformAttr) {
-        parseTransformAttribute(transformAttr, svgObj.get());
-    }
+    if (transformAttr) parseTransformAttribute(transformAttr, svgObj.get());
 
     if (tag == "g") {
         SvgGroup* groupPtr = static_cast<SvgGroup*>(svgObj.get());
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
             auto childObj = parseElementRecursive(child, groupPtr, doc);
-            if (childObj) {
-                groupPtr->addElement(move(childObj));
-            }
+            if (childObj) groupPtr->addElement(move(childObj));
             child = child->NextSiblingElement();
         }
     }
-
     return svgObj;
 }
 
 void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     SvgGroup defaultContext;
-
     if (string(element->Name()) == "svg") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
             auto obj = parseElementRecursive(child, &defaultContext, &doc);
-            if (obj) {
-                doc.addElement(move(obj));
-            }
+            if (obj) doc.addElement(move(obj));
             child = child->NextSiblingElement();
         }
     }
     else {
         auto obj = parseElementRecursive(element, &defaultContext, &doc);
-        if (obj) {
-            doc.addElement(move(obj));
-        }
+        if (obj) doc.addElement(move(obj));
     }
 }
 
 unique_ptr<SvgDocument> Parser::parseSVG(const string& xmlText) {
     auto svgDoc = make_unique<SvgDocument>();
     tinyxml2::XMLDocument doc;
-    if (doc.Parse(xmlText.c_str()) != tinyxml2::XML_SUCCESS) {
-        return nullptr;
-    }
-
+    if (doc.Parse(xmlText.c_str()) != tinyxml2::XML_SUCCESS) return nullptr;
     tinyxml2::XMLElement* root = doc.RootElement();
     if (!root) return nullptr;
-
     parseElement(root, *svgDoc);
     return svgDoc;
 }

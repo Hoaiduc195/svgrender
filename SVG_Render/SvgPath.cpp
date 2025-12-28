@@ -143,6 +143,17 @@ Gdiplus::RectF SvgPath::getBoundingBox() const {
             lastWasCubic = false;
             break;
         }
+        case 'A': {
+            parseNum(); parseNum(); parseNum(); // rx, ry, angle
+            parseNum(); parseNum(); // flags
+            float x = parseNum();
+            float y = parseNum();
+            if (isRel) { x += curX; y += curY; }
+
+            addPoint(x, y);
+            curX = x; curY = y;
+            break;
+        }
         default:
             i++;
             break;
