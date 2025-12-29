@@ -94,9 +94,12 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
 
 Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
     if (element.getFillType() == FillType::None) return nullptr;
+
+    // --- SOLID COLOR ---
     if (element.getFillType() == FillType::SolidColor) {
         if (element.getFillOpacity() <= 0.0f) return nullptr;
         Color c = element.getFill();
+        // Use the element's fill opacity combined with the color's alpha
         return new SolidBrush(Color((BYTE)(element.getFillOpacity() * 255), c.GetR(), c.GetG(), c.GetB()));
     }
 
@@ -108,11 +111,6 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
         Matrix fullMatrix;
 
         if (gradBase->units == GradientUnits::ObjectBoundingBox) {
-            // FIX: Xóa bỏ MatrixOrderAppend ở hàm Scale
-            // GDI+ mặc định là Prepend: New = M * Old.
-            // 1. Translate -> M = T
-            // 2. Scale (Prepend) -> M = S * T.
-            // Kết quả biến đổi điểm P: P * S * T (Scale trước, Translate sau) -> ĐÚNG
             fullMatrix.Translate(bounds.X, bounds.Y);
             fullMatrix.Scale(bounds.Width, bounds.Height);
         }
@@ -120,6 +118,14 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
         Matrix svgTransform;
         SetGdiMatrix(gradBase->transform, svgTransform);
         fullMatrix.Multiply(&svgTransform, MatrixOrderPrepend);
+
+        auto getWeightedColor = [&](const Color& c, float stopOpacity) -> Color {
+            // Note: Parser already put stop-opacity into c.GetAlpha(), but we double check logic here
+            // If your Color class stores 255 for opaque, we normalize to 0..1, multiply by fillOpacity, then back to 255
+            float currentAlpha = c.GetAlpha() / 255.0f;
+            float finalAlpha = currentAlpha * element.getFillOpacity();
+            return Color((BYTE)(clamp(finalAlpha, 0.0f, 1.0f) * 255), c.GetR(), c.GetG(), c.GetB());
+            };
 
         // --- LINEAR GRADIENT ---
         if (gradBase->type == GradientType::Linear) {
@@ -129,28 +135,35 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
             fullMatrix.TransformPoints(&p1);
             fullMatrix.TransformPoints(&p2);
 
+            // Avoid degenerate gradients
             if (std::abs(p1.X - p2.X) < 0.1f && std::abs(p1.Y - p2.Y) < 0.1f) p2.X += 0.1f;
 
             auto* brush = new LinearGradientBrush(p1, p2, Color::Black, Color::White);
 
-            // Logic chèn stops 0.0 và 1.0 (Giữ nguyên vì GDI+ yêu cầu)
+            // [FIX] This line removes the "stripe" artifact by mirroring the edges
+            brush->SetWrapMode(WrapModeTileFlipXY);
+
             int count = (int)gradBase->stops.size();
             if (count > 0) {
                 std::vector<Color> colors;
                 std::vector<REAL> positions;
 
+                // Handle 0.0 stop padding
                 if (gradBase->stops[0].offset > 0.001f) {
-                    colors.push_back(gradBase->stops[0].color);
+                    colors.push_back(getWeightedColor(gradBase->stops[0].color, 1.0f));
                     positions.push_back(0.0f);
                 }
 
                 for (int i = 0; i < count; ++i) {
-                    colors.push_back(gradBase->stops[i].color);
+                    // Parser uses stops[i].color to store the stop-opacity, so we pass 1.0f as the 2nd arg to our helper
+                    // or essentially just rely on the helper to mix it with element opacity.
+                    colors.push_back(getWeightedColor(gradBase->stops[i].color, 1.0f));
                     positions.push_back(static_cast<REAL>(gradBase->stops[i].offset));
                 }
 
+                // Handle 1.0 stop padding
                 if (gradBase->stops.back().offset < 0.999f) {
-                    colors.push_back(gradBase->stops.back().color);
+                    colors.push_back(getWeightedColor(gradBase->stops.back().color, 1.0f));
                     positions.push_back(1.0f);
                 }
 
@@ -200,6 +213,8 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
 
             auto* brush = new PathGradientBrush(&path);
 
+            brush->SetWrapMode(WrapModeClamp);
+
             PointF focus(rGrad->fx, rGrad->fy);
             fullMatrix.TransformPoints(&focus);
             brush->SetCenterPoint(focus);
@@ -209,19 +224,21 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
                 std::vector<Color> colors;
                 std::vector<REAL> positions;
 
-                colors.push_back(gradBase->stops.back().color);
+                // [FIX] Apply opacity helper here too
+                colors.push_back(getWeightedColor(gradBase->stops.back().color, 1.0f));
                 positions.push_back(0.0f);
 
                 for (int i = count - 1; i >= 0; --i) {
                     float svgOffset = gradBase->stops[i].offset;
                     float gdiPos = 1.0f - (svgOffset / expansion);
                     if (!positions.empty() && abs(positions.back() - gdiPos) < 0.001f) continue;
-                    colors.push_back(gradBase->stops[i].color);
+
+                    colors.push_back(getWeightedColor(gradBase->stops[i].color, 1.0f));
                     positions.push_back(gdiPos);
                 }
 
                 if (positions.back() < 1.0f) {
-                    colors.push_back(gradBase->stops[0].color);
+                    colors.push_back(getWeightedColor(gradBase->stops[0].color, 1.0f));
                     positions.push_back(1.0f);
                 }
                 brush->SetInterpolationColors(colors.data(), positions.data(), (INT)colors.size());
@@ -246,34 +263,43 @@ void Renderer::render(const SvgRect& r) {
     applyTransform(g, r.getTransform());
     Brush* brush = createBrush(r, doc);
     if (brush) { g.FillRectangle(brush, r.getX(), r.getY(), r.getWidth(), r.getHeight()); delete brush; }
-    if (r.getStrokeOpacity() > 0) {
+
+
+    if (r.getStrokeOpacity() > 0 && r.getStrokeWidth() > 0) {
         Pen pen(Color((BYTE)(r.getStrokeOpacity() * 255), r.getStroke().GetR(), r.getStroke().GetG(), r.getStroke().GetB()), r.getStrokeWidth());
         g.DrawRectangle(&pen, r.getX(), r.getY(), r.getWidth(), r.getHeight());
     }
     g.Restore(state);
 }
+
 void Renderer::render(const SvgCircle& c) {
     GraphicsState state = g.Save();
     applyTransform(g, c.getTransform());
     Brush* brush = createBrush(c, doc);
     if (brush) { g.FillEllipse(brush, c.getCx() - c.getR(), c.getCy() - c.getR(), c.getR() * 2, c.getR() * 2); delete brush; }
-    if (c.getStrokeOpacity() > 0) {
+
+
+    if (c.getStrokeOpacity() > 0 && c.getStrokeWidth() > 0) {
         Pen pen(Color((BYTE)(c.getStrokeOpacity() * 255), c.getStroke().GetR(), c.getStroke().GetG(), c.getStroke().GetB()), c.getStrokeWidth());
         g.DrawEllipse(&pen, c.getCx() - c.getR(), c.getCy() - c.getR(), c.getR() * 2, c.getR() * 2);
     }
     g.Restore(state);
 }
+
 void Renderer::render(const SvgEllipse& e) {
     GraphicsState state = g.Save();
     applyTransform(g, e.getTransform());
     Brush* brush = createBrush(e, doc);
     if (brush) { g.FillEllipse(brush, e.getCx() - e.getRx(), e.getCy() - e.getRy(), e.getRx() * 2, e.getRy() * 2); delete brush; }
-    if (e.getStrokeOpacity() > 0) {
+
+
+    if (e.getStrokeOpacity() > 0 && e.getStrokeWidth() > 0) {
         Pen pen(Color((BYTE)(e.getStrokeOpacity() * 255), e.getStroke().GetR(), e.getStroke().GetG(), e.getStroke().GetB()), e.getStrokeWidth());
         g.DrawEllipse(&pen, e.getCx() - e.getRx(), e.getCy() - e.getRy(), e.getRx() * 2, e.getRy() * 2);
     }
     g.Restore(state);
 }
+
 void Renderer::render(const SvgLine& l) {
     GraphicsState state = g.Save();
     applyTransform(g, l.getTransform());
@@ -283,6 +309,7 @@ void Renderer::render(const SvgLine& l) {
     }
     g.Restore(state);
 }
+
 void Renderer::render(const SvgPolygon& p) {
     GraphicsState state = g.Save();
     applyTransform(g, p.getTransform());
@@ -292,12 +319,14 @@ void Renderer::render(const SvgPolygon& p) {
     for (const auto& v : pts) gdiPoints.emplace_back(v.x, v.y);
     Brush* brush = createBrush(p, doc);
     if (brush) { g.FillPolygon(brush, gdiPoints.data(), (INT)gdiPoints.size()); delete brush; }
-    if (p.getStrokeOpacity() > 0) {
+
+    if (p.getStrokeOpacity() > 0 && p.getStrokeWidth() > 0) {
         Pen pen(Color((BYTE)(p.getStrokeOpacity() * 255), p.getStroke().GetR(), p.getStroke().GetG(), p.getStroke().GetB()), p.getStrokeWidth());
         g.DrawPolygon(&pen, gdiPoints.data(), (INT)gdiPoints.size());
     }
     g.Restore(state);
 }
+
 void Renderer::render(const SvgPolyline& p) {
     GraphicsState state = g.Save();
     applyTransform(g, p.getTransform());
@@ -307,12 +336,14 @@ void Renderer::render(const SvgPolyline& p) {
     for (const auto& v : pts) gdiPoints.emplace_back(v.x, v.y);
     Brush* brush = createBrush(p, doc);
     if (brush) { g.FillPolygon(brush, gdiPoints.data(), (INT)gdiPoints.size()); delete brush; }
-    if (p.getStrokeOpacity() > 0) {
+
+    if (p.getStrokeOpacity() > 0 && p.getStrokeWidth() > 0) {
         Pen pen(Color((BYTE)(p.getStrokeOpacity() * 255), p.getStroke().GetR(), p.getStroke().GetG(), p.getStroke().GetB()), p.getStrokeWidth());
         g.DrawLines(&pen, gdiPoints.data(), (INT)gdiPoints.size());
     }
     g.Restore(state);
 }
+
 void Renderer::render(const SvgText& t) {
     GraphicsState state = g.Save();
     applyTransform(g, t.getTransform());
@@ -323,7 +354,8 @@ void Renderer::render(const SvgText& t) {
     path.AddString(wContent.c_str(), -1, &fontFamily, FontStyleRegular, t.getFontSize(), PointF(t.getX(), t.getY() - t.getFontSize()), StringFormat::GenericDefault());
     Brush* brush = createBrush(t, doc);
     if (brush) { g.FillPath(brush, &path); delete brush; }
-    if (t.getStrokeOpacity() > 0) {
+
+    if (t.getStrokeOpacity() > 0 && t.getStrokeWidth() > 0) {
         Pen pen(Color((BYTE)(t.getStrokeOpacity() * 255), t.getStroke().GetR(), t.getStroke().GetG(), t.getStroke().GetB()), t.getStrokeWidth());
         g.DrawPath(&pen, &path);
     }
