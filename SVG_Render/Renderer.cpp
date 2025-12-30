@@ -92,7 +92,7 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
     }
 }
 
-Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
+Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* overrideBounds = nullptr) {
     if (element.getFillType() == FillType::None) return nullptr;
 
     // --- SOLID COLOR ---
@@ -107,7 +107,13 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc) {
         const Gradient* gradBase = doc->getGradient(element.getGradientId());
         if (!gradBase) return new SolidBrush(Color::Black);
 
-        RectF bounds = element.getBoundingBox();
+        RectF bounds;
+        if (overrideBounds != nullptr) {
+            bounds = *overrideBounds;
+        }
+        else {
+            bounds = element.getBoundingBox();
+        }
         Matrix fullMatrix;
 
         if (gradBase->units == GradientUnits::ObjectBoundingBox) {
@@ -487,8 +493,18 @@ void Renderer::render(const SvgPath& p) {
         default: i++; break;
         }
     }
+    RectF tightBounds;
+    GraphicsPath* clonePath = path.Clone();
+    if (clonePath != nullptr) {
+        // Flatten: Bien duong cong thanh cac doan thang nho de loai bo diem dieu khien thua
+        clonePath->Flatten(NULL, 0.1f);
+        // Lay khung bao chuan tu path da lam phang
+        clonePath->GetBounds(&tightBounds);
+        //xoa ban sao
+        delete clonePath;
+    }
 
-    Brush* brush = createBrush(p, doc);
+    Brush* brush = createBrush(p, doc, &tightBounds);
     if (brush) {
         g.FillPath(brush, &path);
         delete brush;
