@@ -296,6 +296,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
     return new SolidBrush(Color::Black);
 }
 
+
 static void applyTransform(Graphics& graphics, const Transform& transform) {
     Matrix gdipMatrix;
     SetGdiMatrix(transform, gdipMatrix);
@@ -390,16 +391,45 @@ void Renderer::render(const SvgPolyline& p) {
     g.Restore(state);
 }
 
+
 void Renderer::render(const SvgText& t) {
     GraphicsState state = g.Save();
     applyTransform(g, t.getTransform());
+
     FontFamily fontFamily(L"Times New Roman");
     Font font(&fontFamily, t.getFontSize(), FontStyleRegular, UnitPixel);
+
     std::wstring wContent(t.getContent().begin(), t.getContent().end());
     GraphicsPath path;
-    path.AddString(wContent.c_str(), -1, &fontFamily, FontStyleRegular, t.getFontSize(), PointF(t.getX(), t.getY() - t.getFontSize()), StringFormat::GenericDefault());
+
+    StringFormat format(StringFormat::GenericTypographic());
+
+    std::string anchor = t.getTextAnchor();
+    if (anchor == "middle") {
+        format.SetAlignment(StringAlignmentCenter);
+    }
+    else if (anchor == "end") {
+        format.SetAlignment(StringAlignmentFar);
+    }
+    else {
+        format.SetAlignment(StringAlignmentNear); 
+    }
+
+    path.AddString(
+        wContent.c_str(),
+        -1,
+        &fontFamily,
+        FontStyleRegular,
+        t.getFontSize(),
+        PointF(t.getX(), t.getY() - t.getFontSize()),
+        &format
+    );
+
     Brush* brush = createBrush(t, doc);
-    if (brush) { g.FillPath(brush, &path); delete brush; }
+    if (brush) {
+        g.FillPath(brush, &path);
+        delete brush;
+    }
 
     if (t.getStrokeOpacity() > 0 && t.getStrokeWidth() > 0) {
         Pen pen(Color((BYTE)(t.getStrokeOpacity() * 255), t.getStroke().GetR(), t.getStroke().GetG(), t.getStroke().GetB()), t.getStrokeWidth());

@@ -34,12 +34,21 @@ Matrix3x3 Matrix3x3::Rotate(double angle)
     double theta = angle * (M_PI / 180.0);
     double c = cos(theta);
     double s = sin(theta);
-    return { {{c, s, 0},
-             {-s, c, 0},
+    return { {{c, -s, 0},
+             {s, c, 0},
              {0, 0, 1}} };
 }
 
+
 Matrix3x3 Matrix3x3::SkewX(double angle)
+{
+    double theta = angle * (M_PI / 180.0);
+    return { {{1, tan(theta), 0},
+             {0, 1, 0},
+             {0, 0, 1}} };
+}
+
+Matrix3x3 Matrix3x3::SkewY(double angle)
 {
     double theta = angle * (M_PI / 180.0);
     return { {{1, 0, 0},
@@ -47,13 +56,6 @@ Matrix3x3 Matrix3x3::SkewX(double angle)
              {0, 0, 1}} };
 }
 
-Matrix3x3 Matrix3x3::SkewY(double angle)
-{
-    double theta = angle * (M_PI / 180.0);
-    return { {{1, tan(theta), 0},
-             {0, 1, 0},
-             {0, 0, 1}} };
-}
 
 Matrix3x3& Matrix3x3::operator*=(const Matrix3x3& other)
 {

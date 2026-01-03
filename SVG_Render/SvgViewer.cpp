@@ -163,11 +163,9 @@ void SvgViewer::exportToPng(const wstring& filePath) {
         Gdiplus::Status status = bitmap.Save(filePath.c_str(), &pngClsid, NULL);
 
         if (status == Gdiplus::Ok) {
-            // This will tell you the EXACT path where it was saved
             MessageBoxW(m_hWnd, (L"Saved to: " + filePath).c_str(), L"Success", MB_OK);
         }
         else {
-            // This will pop up if there is a permission or path error
             MessageBoxW(m_hWnd, L"GDI+ Save Failed! Check folder permissions.", L"Error", MB_ICONERROR);
         }
     }

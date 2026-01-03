@@ -307,7 +307,13 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
 
     if (!svgObj) return nullptr;
 
-    // --- 1. Standard Attributes ---
+
+    float globalOpacity = element->FloatAttribute("opacity", 1.0f);
+    globalOpacity = clamp(globalOpacity, 0.0f, 1.0f);
+
+    float rawFillOpacity = 1.0f;
+    float rawStrokeOpacity = 1.0f;
+
     const char* fillAttr = element->Attribute("fill");
     if (fillAttr) {
         string fillStr = trim(fillAttr);
@@ -319,33 +325,37 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         }
         else {
             svgObj->setFill(parseColor(fillAttr));
-            if (fillStr == "none") svgObj->setFillOpacity(0.0f);
+            if (fillStr == "none") rawFillOpacity = 0.0f;
         }
     }
     else if (parent) {
         if (parent->getFillType() == FillType::Gradient) svgObj->setFillGradient(parent->getGradientId());
         else svgObj->setFill(parent->getFill());
-        svgObj->setFillOpacity(parent->getFillOpacity());
+
+        rawFillOpacity = parent->getFillOpacity();
     }
 
-    if (element->Attribute("fill-opacity")) svgObj->setFillOpacity(element->FloatAttribute("fill-opacity"));
+    if (element->Attribute("fill-opacity")) {
+        rawFillOpacity = element->FloatAttribute("fill-opacity");
+    }
 
     const char* strokeAttr = element->Attribute("stroke");
     if (strokeAttr) {
         svgObj->setStroke(parseColor(strokeAttr));
-        if (string(strokeAttr) == "none") svgObj->setStrokeOpacity(0.0f);
-        else svgObj->setStrokeOpacity(1.0f);
+        if (string(strokeAttr) == "none") rawStrokeOpacity = 0.0f;
     }
     else if (parent) {
         svgObj->setStroke(parent->getStroke());
-        svgObj->setStrokeOpacity(parent->getStrokeOpacity());
+        rawStrokeOpacity = parent->getStrokeOpacity();
     }
 
-    if (element->Attribute("stroke-opacity")) svgObj->setStrokeOpacity(element->FloatAttribute("stroke-opacity"));
+    if (element->Attribute("stroke-opacity")) {
+        rawStrokeOpacity = element->FloatAttribute("stroke-opacity");
+    }
+
     if (element->Attribute("stroke-width")) svgObj->setStrokeWidth(element->FloatAttribute("stroke-width"));
     else if (parent) svgObj->setStrokeWidth(parent->getStrokeWidth());
 
-    // --- 2. STYLE Parsing (QUAN TRỌNG) ---
     const char* styleAttr = element->Attribute("style");
     if (styleAttr) {
         string styleStr = styleAttr;
@@ -358,28 +368,42 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
             string key = trim(item.substr(0, colon));
             string val = trim(item.substr(colon + 1));
 
-            if (key == "fill") {
+            if (key == "opacity") {
+                globalOpacity = stof(val);
+                globalOpacity = clamp(globalOpacity, 0.0f, 1.0f);
+            }
+            else if (key == "fill") {
                 if (val.find("url(#") != string::npos) {
                     size_t s = val.find("#") + 1;
                     size_t e = val.find(")");
                     svgObj->setFillGradient(val.substr(s, e - s));
+                    rawFillOpacity = 1.0f; 
                 }
                 else {
                     svgObj->setFill(parseColor(val));
-                    if (val == "none") svgObj->setFillOpacity(0.0f);
-                    else svgObj->setFillOpacity(1.0f);
+                    if (val == "none") rawFillOpacity = 0.0f;
+                    else rawFillOpacity = 1.0f;
                 }
             }
-            else if (key == "fill-opacity") svgObj->setFillOpacity(stof(val));
+            else if (key == "fill-opacity") {
+                rawFillOpacity = stof(val);
+            }
             else if (key == "stroke") {
                 svgObj->setStroke(parseColor(val));
-                if (val == "none") svgObj->setStrokeOpacity(0.0f);
-                else svgObj->setStrokeOpacity(1.0f);
+                if (val == "none") rawStrokeOpacity = 0.0f;
+                else rawStrokeOpacity = 1.0f;
             }
-            else if (key == "stroke-opacity") svgObj->setStrokeOpacity(stof(val));
-            else if (key == "stroke-width") svgObj->setStrokeWidth(stof(val));
+            else if (key == "stroke-opacity") {
+                rawStrokeOpacity = stof(val);
+            }
+            else if (key == "stroke-width") {
+                svgObj->setStrokeWidth(stof(val));
+            }
         }
     }
+
+    svgObj->setFillOpacity(rawFillOpacity * globalOpacity);
+    svgObj->setStrokeOpacity(rawStrokeOpacity * globalOpacity);
 
     const char* transformAttr = element->Attribute("transform");
     if (transformAttr) parseTransformAttribute(transformAttr, svgObj.get());
