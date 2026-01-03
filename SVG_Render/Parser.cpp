@@ -224,6 +224,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     if (!element) return nullptr;
     string tag = element->Name();
 
+    // --- (GIỮ NGUYÊN) Phần xử lý Defs và Gradient ---
     if (tag == "defs") {
         tinyxml2::XMLElement* child = element->FirstChildElement();
         while (child) {
@@ -242,9 +243,11 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         if (grad && doc) doc->addGradient(move(grad));
         return nullptr;
     }
+    // ------------------------------------------------
 
     unique_ptr<SvgElement> svgObj = nullptr;
 
+    // --- (GIỮ NGUYÊN) Phần tạo Object (Path, Rect, Circle...) ---
     if (tag == "g") svgObj = make_unique<SvgGroup>();
     else if (tag == "path") {
         string d = element->Attribute("d") ? element->Attribute("d") : "";
@@ -307,6 +310,9 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
 
     if (!svgObj) return nullptr;
 
+    // ========================================================================
+    // LOGIC PARSE STYLE & ATTRIBUTES (ĐÃ CẬP NHẬT)
+    // ========================================================================
 
     float globalOpacity = element->FloatAttribute("opacity", 1.0f);
     globalOpacity = clamp(globalOpacity, 0.0f, 1.0f);
@@ -314,6 +320,12 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     float rawFillOpacity = 1.0f;
     float rawStrokeOpacity = 1.0f;
 
+    // --- Các cờ để theo dõi trạng thái Stroke ---
+    bool hasStrokeDef = false;       // Đã gặp định nghĩa stroke (attr hoặc style)?
+    bool strokeIsNone = false;       // Stroke có phải là "none" không?
+    bool hasStrokeWidthDef = false;  // Đã gặp định nghĩa stroke-width chưa?
+
+    // 1. Xử lý FILL (Attribute)
     const char* fillAttr = element->Attribute("fill");
     if (fillAttr) {
         string fillStr = trim(fillAttr);
@@ -329,9 +341,9 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         }
     }
     else if (parent) {
+        // Kế thừa Fill
         if (parent->getFillType() == FillType::Gradient) svgObj->setFillGradient(parent->getGradientId());
         else svgObj->setFill(parent->getFill());
-
         rawFillOpacity = parent->getFillOpacity();
     }
 
@@ -339,23 +351,45 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
         rawFillOpacity = element->FloatAttribute("fill-opacity");
     }
 
+    // 2. Xử lý STROKE (Attribute)
     const char* strokeAttr = element->Attribute("stroke");
     if (strokeAttr) {
+        hasStrokeDef = true; // Đánh dấu đã có stroke
+        string sAttr = string(strokeAttr);
+
         svgObj->setStroke(parseColor(strokeAttr));
-        if (string(strokeAttr) == "none") rawStrokeOpacity = 0.0f;
+
+        if (sAttr == "none") {
+            rawStrokeOpacity = 0.0f;
+            strokeIsNone = true;
+        }
+        else {
+            strokeIsNone = false;
+        }
     }
     else if (parent) {
+        // Kế thừa Stroke
         svgObj->setStroke(parent->getStroke());
         rawStrokeOpacity = parent->getStrokeOpacity();
+        // Lưu ý: Không bật hasStrokeDef ở đây vì flag này dùng để check xem
+        // "element hiện tại" có khai báo thiếu width hay không.
     }
 
     if (element->Attribute("stroke-opacity")) {
         rawStrokeOpacity = element->FloatAttribute("stroke-opacity");
     }
 
-    if (element->Attribute("stroke-width")) svgObj->setStrokeWidth(element->FloatAttribute("stroke-width"));
-    else if (parent) svgObj->setStrokeWidth(parent->getStrokeWidth());
+    // 3. Xử lý STROKE-WIDTH (Attribute)
+    if (element->Attribute("stroke-width")) {
+        svgObj->setStrokeWidth(element->FloatAttribute("stroke-width"));
+        hasStrokeWidthDef = true; // Đánh dấu đã có width
+    }
+    else if (parent) {
+        // Kế thừa Width
+        svgObj->setStrokeWidth(parent->getStrokeWidth());
+    }
 
+    // 4. Xử lý STYLE (Ghi đè Attribute)
     const char* styleAttr = element->Attribute("style");
     if (styleAttr) {
         string styleStr = styleAttr;
@@ -377,7 +411,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
                     size_t s = val.find("#") + 1;
                     size_t e = val.find(")");
                     svgObj->setFillGradient(val.substr(s, e - s));
-                    rawFillOpacity = 1.0f; 
+                    rawFillOpacity = 1.0f;
                 }
                 else {
                     svgObj->setFill(parseColor(val));
@@ -389,22 +423,40 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
                 rawFillOpacity = stof(val);
             }
             else if (key == "stroke") {
+                hasStrokeDef = true; // Style định nghĩa stroke
                 svgObj->setStroke(parseColor(val));
-                if (val == "none") rawStrokeOpacity = 0.0f;
-                else rawStrokeOpacity = 1.0f;
+                if (val == "none") {
+                    rawStrokeOpacity = 0.0f;
+                    strokeIsNone = true;
+                }
+                else {
+                    rawStrokeOpacity = 1.0f;
+                    strokeIsNone = false;
+                }
             }
             else if (key == "stroke-opacity") {
                 rawStrokeOpacity = stof(val);
             }
             else if (key == "stroke-width") {
                 svgObj->setStrokeWidth(stof(val));
+                hasStrokeWidthDef = true; // Style định nghĩa width
             }
         }
+    }
+
+    // ========================================================================
+    // FIX CHO SVG-17: LOGIC MẶC ĐỊNH STROKE WIDTH
+    // Nếu có khai báo Stroke, mà Stroke đó khác 'none', và chưa có khai báo Width
+    // => Thì mặc định Width là 1.0
+    // ========================================================================
+    if (hasStrokeDef && !strokeIsNone && !hasStrokeWidthDef) {
+        svgObj->setStrokeWidth(1.0f);
     }
 
     svgObj->setFillOpacity(rawFillOpacity * globalOpacity);
     svgObj->setStrokeOpacity(rawStrokeOpacity * globalOpacity);
 
+    // --- (GIỮ NGUYÊN) Transform và Đệ quy con ---
     const char* transformAttr = element->Attribute("transform");
     if (transformAttr) parseTransformAttribute(transformAttr, svgObj.get());
 
@@ -419,6 +471,7 @@ unique_ptr<SvgElement> Parser::parseElementRecursive(tinyxml2::XMLElement* eleme
     }
     return svgObj;
 }
+
 
 void Parser::parseElement(tinyxml2::XMLElement* element, SvgDocument& doc) {
     SvgGroup defaultContext;
