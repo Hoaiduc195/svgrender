@@ -4,6 +4,7 @@
 #include "FileReader.h"
 #include <windowsx.h>
 #include <commctrl.h>
+#include <shobjidl.h>
 
 LRESULT CALLBACK GlobalWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -79,6 +80,7 @@ void SvgViewer::run()
 
     ShowWindow(m_hWnd, SW_SHOW);
     UpdateWindow(m_hWnd);
+    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0) > 0)
@@ -88,6 +90,89 @@ void SvgViewer::run()
     }
     GdiplusShutdown(gdiplusToken);
 }
+
+#include <shobjidl.h> // Required for IFileSaveDialog
+
+wstring SvgViewer::showSaveDialog() {
+    IFileSaveDialog* pSaveDialog = nullptr;
+    std::wstring filePath = L"";
+
+    // Create the FileSaveDialog object
+    HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_ALL,
+        IID_IFileSaveDialog, reinterpret_cast<void**>(&pSaveDialog));
+
+    if (SUCCEEDED(hr)) {
+        // Set the file types/filters to PNG
+        COMDLG_FILTERSPEC pngFilter[] = { { L"PNG Image", L"*.png" } };
+        pSaveDialog->SetFileTypes(1, pngFilter);
+        pSaveDialog->SetDefaultExtension(L"png");
+        pSaveDialog->SetFileName(L"drawing.png"); // Suggest a default name
+
+        // Show the dialog
+        hr = pSaveDialog->Show(m_hWnd);
+
+        if (SUCCEEDED(hr)) {
+            IShellItem* pItem;
+            hr = pSaveDialog->GetResult(&pItem);
+            if (SUCCEEDED(hr)) {
+                PWSTR pszFilePath;
+                hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+                if (SUCCEEDED(hr)) {
+                    filePath = pszFilePath;
+                    CoTaskMemFree(pszFilePath); // Free the memory allocated by the shell
+                }
+                pItem->Release();
+            }
+        }
+        pSaveDialog->Release();
+    }
+    return filePath;
+}
+
+int GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
+    UINT num = 0;          // number of image encoders
+    UINT size = 0;         // size of the image encoder array in bytes
+
+    Gdiplus::GetImageEncodersSize(&num, &size);
+    if (size == 0) return -1;
+
+    Gdiplus::ImageCodecInfo* pImageCodecInfo = (Gdiplus::ImageCodecInfo*)(malloc(size));
+    if (pImageCodecInfo == NULL) return -1;
+
+    Gdiplus::GetImageEncoders(num, size, pImageCodecInfo);
+
+    for (UINT j = 0; j < num; ++j) {
+        if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0) {
+            *pClsid = pImageCodecInfo[j].Clsid;
+            free(pImageCodecInfo);
+            return j;  // Success
+        }
+    }
+
+    free(pImageCodecInfo);
+    return -1; // Failure
+}
+
+void SvgViewer::exportToPng(const wstring& filePath) {
+    Gdiplus::Bitmap bitmap(screenWidth, screenHeight, PixelFormat32bppARGB);
+    Gdiplus::Graphics g(&bitmap);
+    render(g);
+
+    CLSID pngClsid;
+    if (GetEncoderClsid(L"image/png", &pngClsid) != -1) {
+        Gdiplus::Status status = bitmap.Save(filePath.c_str(), &pngClsid, NULL);
+
+        if (status == Gdiplus::Ok) {
+            // This will tell you the EXACT path where it was saved
+            MessageBoxW(m_hWnd, (L"Saved to: " + filePath).c_str(), L"Success", MB_OK);
+        }
+        else {
+            // This will pop up if there is a permission or path error
+            MessageBoxW(m_hWnd, L"GDI+ Save Failed! Check folder permissions.", L"Error", MB_ICONERROR);
+        }
+    }
+}
+
 
 LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -210,6 +295,11 @@ LRESULT SvgViewer::handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
             zoomFactor = 1.0f;
             rotationAngle = 0.0f;
             translationOffset = PointF(0.0f, 0.0f);
+        }else if (wParam == 'E') {
+            std::wstring path = showSaveDialog();
+            if (!path.empty()) {
+                exportToPng(path);
+            }
         }
 
         if (rotationAngle > 360.0f) rotationAngle -= 360.0f;

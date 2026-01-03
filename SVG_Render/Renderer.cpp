@@ -242,7 +242,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
             auto distSq = [](PointF p1, PointF p2) { return pow(p1.X - p2.X, 2) + pow(p1.Y - p2.Y, 2); };
 
             for (auto& p : unitCorners) {
-                float d = sqrt(distSq(p, center));
+                float d = (float)sqrt(distSq(p, center));
                 if (d > maxDist) maxDist = d;
             }
 

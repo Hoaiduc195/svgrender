@@ -25,6 +25,8 @@ public:
 
     void run();
     LRESULT handleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+    wstring showSaveDialog();
+    void exportToPng(const wstring& filePath);
     void loadSvg(const string& filePath);
     void handleInput();
     void render(Graphics& graphics);
