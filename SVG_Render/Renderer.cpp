@@ -434,7 +434,9 @@ void Renderer::render(const SvgPath& p) {
     PointF cur(0, 0);
     PointF start(0, 0);
     PointF lastCubicControl(0, 0);
+    PointF lastQuadraticControl(0, 0);
     bool lastWasCubic = false;
+    bool lastWasQuadratic = false;
     bool figureStarted = false;
     size_t i = 0;
     char cmd = 0;
@@ -543,6 +545,72 @@ void Renderer::render(const SvgPath& p) {
         case 'Z': {
             if (figureStarted) path.CloseFigure();
             cur = start; lastWasCubic = false;
+            break;
+        }
+        case 'Q': {
+            float x1 = parseNum();
+            float y1 = parseNum();
+            float x = parseNum();
+            float y = parseNum();
+
+            if (isRelative) {
+                x1 += cur.X; y1 += cur.Y;
+                x += cur.X; y += cur.Y;
+            }
+
+            if (figureStarted) {
+
+                PointF cp1(
+                    cur.X + (2.0f / 3.0f) * (x1 - cur.X),
+                    cur.Y + (2.0f / 3.0f) * (y1 - cur.Y)
+                );
+
+                PointF cp2(
+                    x + (2.0f / 3.0f) * (x1 - x),
+                    y + (2.0f / 3.0f) * (y1 - y)
+                );
+
+                path.AddBezier(cur, cp1, cp2, PointF(x, y));
+            }
+
+            cur = PointF(x, y);
+            lastQuadraticControl = PointF(x1, y1);
+            lastWasQuadratic = true;
+            lastWasCubic = false;
+            break;
+        }
+        case 'T': {
+            float x = parseNum();
+            float y = parseNum();
+
+            if (isRelative) {
+                x += cur.X; y += cur.Y;
+            }
+
+            PointF ctrl(cur.X, cur.Y);
+            if (lastWasQuadratic) {
+                ctrl.X = 2 * cur.X - lastQuadraticControl.X;
+                ctrl.Y = 2 * cur.Y - lastQuadraticControl.Y;
+            }
+
+            if (figureStarted) {
+                PointF cp1(
+                    cur.X + (2.0f / 3.0f) * (ctrl.X - cur.X),
+                    cur.Y + (2.0f / 3.0f) * (ctrl.Y - cur.Y)
+                );
+
+                PointF cp2(
+                    x + (2.0f / 3.0f) * (ctrl.X - x),
+                    y + (2.0f / 3.0f) * (ctrl.Y - y)
+                );
+
+                path.AddBezier(cur, cp1, cp2, PointF(x, y));
+            }
+
+            cur = PointF(x, y);
+            lastQuadraticControl = ctrl;
+            lastWasQuadratic = true;
+            lastWasCubic = false;
             break;
         }
         default: i++; break;
