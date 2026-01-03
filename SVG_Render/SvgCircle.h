@@ -11,11 +11,12 @@ class SvgCircle : public SvgElement {
         float r;
     public:
         SvgCircle(float centerX, float centerY, float radius);
-        void accept(Renderer& renderer) const override;
-
+        
         // Getters
         float getCx() const;
         float getCy() const;
         float getR() const;
+
+        void accept(Renderer& renderer) const override;
         RectF getBoundingBox() const override;
 };

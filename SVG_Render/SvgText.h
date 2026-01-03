@@ -19,7 +19,7 @@ public:
 	SvgText(float _x, float _y, float _fontSize, const string& _content, const string& _textAnchor);
     ~SvgText();
 
-    void accept(Renderer& renderer) const override;
+    
 
     // Setters
     void setFontSize(float size);
@@ -31,5 +31,7 @@ public:
     float getFontSize() const;
     const string& getContent() const;
     const string& getTextAnchor() const;
+
+    void accept(Renderer& renderer) const override;
     RectF getBoundingBox() const override;
 };

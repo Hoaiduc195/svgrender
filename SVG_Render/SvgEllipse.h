@@ -13,12 +13,13 @@ class SvgEllipse : public SvgElement {
         float ry;
     public:
         SvgEllipse(float cx, float cy, float rx, float ry);
-        void accept(Renderer& renderer) const override;
 
 		// Getters
         float getCx() const;
         float getCy() const;
         float getRx() const;
         float getRy() const;
+
+        void accept(Renderer& renderer) const override;
         RectF getBoundingBox() const override;
 };

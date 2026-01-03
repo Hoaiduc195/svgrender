@@ -13,9 +13,10 @@ public:
 	~SvgPath() = default;
 	SvgPath(const string& path);
 	SvgPath& operator=(const SvgPath& other) = default;
-	void accept(Renderer& renderer) const override;
 	
 	// Getter 
 	const string& getPathData() const;
+
+	void accept(Renderer& renderer) const override;
 	RectF getBoundingBox() const override;
 };

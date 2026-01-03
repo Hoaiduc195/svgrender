@@ -10,8 +10,8 @@ enum class GradientType {
 };
 
 enum class GradientUnits {
-    ObjectBoundingBox, // Default: coordinates are 0..1 relative to the shape
-    UserSpaceOnUse     // Coordinates are absolute pixels
+    ObjectBoundingBox, // default
+    UserSpaceOnUse     
 };
 
 struct GradientStop {
@@ -30,7 +30,7 @@ struct Gradient {
 
     Gradient(GradientType t)
         : type(t), units(GradientUnits::ObjectBoundingBox) {
-    } // Default per SVG spec
+    } 
     virtual ~Gradient() = default;
 };
 

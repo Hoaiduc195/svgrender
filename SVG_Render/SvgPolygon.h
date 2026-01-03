@@ -14,10 +14,11 @@ public:
 	SvgPolygon(const SvgPolygon& other);
 	SvgPolygon(vector<Vector2> pts, bool closed);
 	~SvgPolygon();
-	void accept(Renderer& renderer) const override;
 
 	// Getter
 	const vector<Vector2>& getPoints() const;
+
+	void accept(Renderer& renderer) const override;
 	RectF getBoundingBox() const override;
 };
 

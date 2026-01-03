@@ -34,7 +34,7 @@ void SetGdiMatrix(const Transform& transform, Matrix& matrix) {
     );
 }
 
-// --- ARC MATH HELPERS ---
+// arc math helpers
 float AngleFromVector(float ux, float uy) { return atan2(uy, ux); }
 
 void AddArcSegment(GraphicsPath& path, float cx, float cy, float rx, float ry,
@@ -91,7 +91,7 @@ void TraceArc(GraphicsPath& path, float x1, float y1, float rx, float ry,
         currentAngle += delta;
     }
 }
-// Helper function to project a point onto a line segment (v1 to v2) and get the t value
+
 float getProjectionT(PointF p, PointF v1, PointF v2) {
     float dx = v2.X - v1.X;
     float dy = v2.Y - v1.Y;
@@ -103,7 +103,6 @@ float getProjectionT(PointF p, PointF v1, PointF v2) {
 Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* overrideBounds = nullptr) {
     if (element.getFillType() == FillType::None) return nullptr;
 
-    // --- SOLID COLOR ---
     if (element.getFillType() == FillType::SolidColor) {
         if (element.getFillOpacity() <= 0.0f) return nullptr;
         Color c = element.getFill();
@@ -132,14 +131,12 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
         SetGdiMatrix(gradBase->transform, svgTransform);
         fullMatrix.Multiply(&svgTransform, MatrixOrderPrepend);
 
-        // Helper to combine stop-opacity with element fill-opacity
         auto getWeightedColor = [&](const Color& c, float stopOpacity) -> Color {
             float currentAlpha = c.GetAlpha() / 255.0f;
             float finalAlpha = currentAlpha * element.getFillOpacity();
             return Color((BYTE)(clamp(finalAlpha, 0.0f, 1.0f) * 255), c.GetR(), c.GetG(), c.GetB());
             };
 
-        // --- LINEAR GRADIENT (With "Pad" Simulation) ---
         if (gradBase->type == GradientType::Linear) {
             const auto* lGrad = static_cast<const LinearGradient*>(gradBase);
             PointF p1(lGrad->x1, lGrad->y1);
@@ -147,7 +144,6 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
             fullMatrix.TransformPoints(&p1);
             fullMatrix.TransformPoints(&p2);
 
-            // 1. Calculate the bounds of the shape in the local space
             PointF corners[4] = {
                 {bounds.X, bounds.Y},
                 {bounds.X + bounds.Width, bounds.Y},
@@ -155,23 +151,19 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
                 {bounds.X + bounds.Width, bounds.Y + bounds.Height}
             };
 
-            // 2. Project all corners onto the gradient vector to find the range [minT, maxT]
             float minT = 0.0f;
             float maxT = 1.0f;
 
-            // Check projections to ensure "Pad" covers the whole shape
             for (int i = 0; i < 4; i++) {
                 float t = getProjectionT(corners[i], p1, p2);
                 if (t < minT) minT = t;
                 if (t > maxT) maxT = t;
             }
 
-            // 3. Expand the gradient vector if needed
             PointF start = p1;
             PointF end = p2;
 
             if (minT < 0.0f || maxT > 1.0f) {
-                // Add a small buffer to avoid artifacts at the exact edge
                 minT -= 0.01f;
                 maxT += 0.01f;
 
@@ -183,20 +175,17 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
                 end.Y = p1.Y + dy * maxT;
             }
 
-            // Validate length
             if (std::abs(start.X - end.X) < 0.1f && std::abs(start.Y - end.Y) < 0.1f) end.X += 0.1f;
 
             auto* brush = new LinearGradientBrush(start, end, Color::Black, Color::White);
-            brush->SetWrapMode(WrapModeTileFlipXY); // Flip is safe now because we manually padded the colors
-            brush->SetGammaCorrection(TRUE); // Optional: Helps with color blending accuracy
+            brush->SetWrapMode(WrapModeTileFlipXY); 
+            brush->SetGammaCorrection(TRUE); 
 
-            // 4. Re-map the stops to the new expanded range
             std::vector<Color> colors;
             std::vector<REAL> positions;
             float range = maxT - minT;
 
             if (!gradBase->stops.empty()) {
-                // Pad Start (fill from 0.0 to mapped start with first color)
                 colors.push_back(getWeightedColor(gradBase->stops[0].color, 1.0f));
                 positions.push_back(0.0f);
 
@@ -207,7 +196,6 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
                     positions.push_back(newPos);
                 }
 
-                // Pad End (fill from mapped end to 1.0 with last color)
                 colors.push_back(getWeightedColor(gradBase->stops.back().color, 1.0f));
                 positions.push_back(1.0f);
 
@@ -217,7 +205,6 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
             return brush;
         }
 
-        // --- RADIAL GRADIENT (With "Pad" Simulation) ---
         else if (gradBase->type == GradientType::Radial) {
             const auto* rGrad = static_cast<const RadialGradient*>(gradBase);
 
@@ -250,7 +237,7 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
             if (rGrad->r > 0.0001f && maxDist > rGrad->r) {
                 expansion = maxDist / rGrad->r;
             }
-            expansion *= 1.2f; // buffer
+            expansion *= 1.2f;
             float expRadius = rGrad->r * expansion;
 
             GraphicsPath path;
@@ -270,7 +257,6 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
                 std::vector<Color> colors;
                 std::vector<REAL> positions;
 
-                // Pad Edge (GDI 0.0 = Edge)
                 colors.push_back(getWeightedColor(gradBase->stops.back().color, 1.0f));
                 positions.push_back(0.0f);
 
@@ -283,7 +269,6 @@ Brush* createBrush(const SvgElement& element, const SvgDocument* doc, RectF* ove
                     positions.push_back(gdiPos);
                 }
 
-                // Pad Center (GDI 1.0 = Center)
                 if (positions.back() < 1.0f) {
                     colors.push_back(getWeightedColor(gradBase->stops[0].color, 1.0f));
                     positions.push_back(1.0f);
