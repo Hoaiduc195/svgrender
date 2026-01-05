@@ -101,7 +101,7 @@ static vector<Vector2> parsePoints(const string& pointsStr) {
 
 Color Parser::parseColor(const string& rawValue) {
     string value = trim(rawValue);
-    if (value.empty() || value == "none") return Color(0, 0, 0, 0);
+    if (value.empty() || value == "none") return Color(0, 255, 255, 255);
     if (value.find("url(") != string::npos) return Color::Black;
 
     if (value[0] == '#') {
