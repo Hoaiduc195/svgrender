@@ -1,6 +1,7 @@
 #pragma once
 #include "framework.h"
 #include "SvgElement.h"
+#include "GeometryUtils.h"
 
 class SvgGroup : public SvgElement {
 protected:

@@ -16,4 +16,5 @@ public:
     void addGradient(unique_ptr<Gradient> grad);
     const Gradient* getGradient(const string& id) const;
     void draw(Graphics& graphic);
+    RectF getBoundingBox() const;
 };

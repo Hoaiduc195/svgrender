@@ -334,11 +334,22 @@ void SvgViewer::render(Graphics& graphics)
     graphics.SetPageScale(1.0f);
     PointF center((REAL)screenWidth * 0.5f, (REAL)screenHeight * 0.5f);
 
-    graphics.TranslateTransform(translationOffset.X, translationOffset.Y);
-    graphics.TranslateTransform(center.X, center.Y);
+    float objectCenterX = 0.0f;
+    float objectCenterY = 0.0f;
+
+    if (document) {
+        RectF bounds = document->getBoundingBox();
+        objectCenterX = bounds.X + bounds.Width * 0.5f;
+        objectCenterY = bounds.Y + bounds.Height * 0.5f;
+    }
+
+    float screenCenterX = (float)screenWidth * 0.5f;
+    float screenCenterY = (float)screenHeight * 0.5f;
+
+    graphics.TranslateTransform(screenCenterX + translationOffset.X, screenCenterY + translationOffset.Y);
     graphics.RotateTransform(rotationAngle);
     graphics.ScaleTransform(zoomFactor, zoomFactor);
-    graphics.TranslateTransform(-center.X, -center.Y);
+    graphics.TranslateTransform(-objectCenterX, -objectCenterY);
 
     if (document) {
         document->draw(graphics);

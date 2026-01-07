@@ -13,13 +13,7 @@
 #include <sstream>
 #include <algorithm>
 #include <string>
-
-template <typename T>
-T clamp(T val, T minVal, T maxVal) {
-    if (val < minVal) return minVal;
-    if (val > maxVal) return maxVal;
-    return val;
-}
+#include "GeometryUtils.h"
 
 // Helper: Trim string
 std::string trim(const std::string& str) {
