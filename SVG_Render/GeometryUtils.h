@@ -9,8 +9,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-using namespace Gdiplus;
-
 template <typename T>
 T clamp(T val, T minVal, T maxVal) {
     if (val < minVal) return minVal;

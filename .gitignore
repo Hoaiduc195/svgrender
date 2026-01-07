@@ -362,13 +362,12 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-
 # Visual Studio generated project/solution files
-*.vcxproj
-*.vcxproj.filters
-*.vcxproj.user
+# *.vcxproj
+# *.vcxproj.filters
+# *.vcxproj.user
 
 
 # User config
-SVG_Render/Assets
+# SVG_Render/Assets
 .vscode
