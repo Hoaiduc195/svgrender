@@ -25,19 +25,20 @@ const vector<Vector2>& SvgPolygon::getPoints() const {
 RectF SvgPolygon::getBoundingBox() const {
     if (points.empty()) return RectF(0, 0, 0, 0);
 
-    float minX = points[0].x;
-    float maxX = points[0].x;
-    float minY = points[0].y;
-    float maxY = points[0].y;
-
-    for (const auto& p : points) {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
+    GraphicsPath path;
+    std::vector<PointF> gdiPoints;
+    for (const auto& pt : points) {
+        gdiPoints.emplace_back(pt.x, pt.y);
     }
+    path.AddPolygon(gdiPoints.data(), (INT)gdiPoints.size());
 
-    return RectF(minX, minY, maxX - minX, maxY - minY);
+    Matrix matrix;
+    SetGdiMatrix(getTransform(), matrix);
+    path.Transform(&matrix);
+
+    RectF bounds;
+    path.GetBounds(&bounds);
+    return bounds;
 }
 
 void SvgPolygon::accept(Renderer& renderer) const {

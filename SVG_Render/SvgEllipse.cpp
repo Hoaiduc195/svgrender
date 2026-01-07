@@ -18,7 +18,16 @@ float SvgEllipse::getRy() const {
     return ry; 
 }
 RectF SvgEllipse::getBoundingBox() const {
-    return RectF(cx - rx, cy - ry, 2 * rx, 2 * ry);
+    GraphicsPath path;
+    path.AddEllipse(cx - rx, cy - ry, rx * 2, ry * 2);
+
+    Matrix matrix;
+    SetGdiMatrix(getTransform(), matrix);
+    path.Transform(&matrix);
+
+    RectF bounds;
+    path.GetBounds(&bounds);
+    return bounds;
 }
 
 void SvgEllipse::accept(Renderer& renderer) const {

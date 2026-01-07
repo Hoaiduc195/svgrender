@@ -61,12 +61,38 @@ const string& SvgText::getTextAnchor() const {
 	return textAnchor; 
 }
 RectF SvgText::getBoundingBox() const {
-	float estWidth = content.length() * fontSize * 0.6f;
-	float estHeight = fontSize;
+	if (content.empty()) return RectF(0, 0, 0, 0);
+	GraphicsPath path;
 
-	float startX = x;
-	if (textAnchor == "middle") startX -= estWidth / 2.0f;
-	else if (textAnchor == "end") startX -= estWidth;
+	FontFamily fontFamily(L"Times New Roman");
 
-	return RectF(startX, y - estHeight, estWidth, estHeight);
+	StringFormat format(StringFormat::GenericTypographic());
+	if (textAnchor == "middle") {
+		format.SetAlignment(StringAlignmentCenter);
+	}
+	else if (textAnchor == "end") {
+		format.SetAlignment(StringAlignmentFar);
+	}
+	else {
+		format.SetAlignment(StringAlignmentNear);
+	}
+
+	std::wstring wContent(content.begin(), content.end());
+
+	path.AddString(
+		wContent.c_str(),
+		-1,
+		&fontFamily,
+		FontStyleRegular,
+		fontSize,
+		PointF(x, y - fontSize),
+		&format
+	);
+	Matrix matrix;
+	SetGdiMatrix(getTransform(), matrix);
+	path.Transform(&matrix);
+
+	RectF bounds;
+	path.GetBounds(&bounds);
+	return bounds;
 }

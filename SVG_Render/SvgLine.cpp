@@ -18,9 +18,16 @@ float SvgLine::getY2() const {
     return y2; 
 }
 RectF SvgLine::getBoundingBox() const {
-    float minX = min(x1, x2);
-    float minY = min(y1, y2); 
-    return RectF(minX, minY, abs(x1 - x2), abs(y1 - y2));
+    GraphicsPath path;
+    path.AddLine(x1, y1, x2, y2);
+
+    Matrix matrix;
+    SetGdiMatrix(getTransform(), matrix);
+    path.Transform(&matrix);
+
+    RectF bounds;
+    path.GetBounds(&bounds);
+    return bounds;
 }
 void SvgLine::accept(Renderer& renderer) const {
     renderer.render(*this);

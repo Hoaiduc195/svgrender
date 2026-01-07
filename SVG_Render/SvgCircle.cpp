@@ -15,8 +15,18 @@ float SvgCircle::getR() const {
     return r; 
 }
 RectF SvgCircle::getBoundingBox() const {
-    return RectF(cx - r, cy - r, 2 * r, 2 * r);
+    GraphicsPath path;
+    path.AddEllipse(cx - r, cy - r, r * 2, r * 2);
+
+    Matrix matrix;
+    SetGdiMatrix(getTransform(), matrix);
+    path.Transform(&matrix);
+
+    RectF bounds;
+    path.GetBounds(&bounds);
+    return bounds;
 }
+
 void SvgCircle::accept(Renderer& renderer) const {
     renderer.render(*this);
 }

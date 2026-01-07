@@ -25,19 +25,28 @@ const vector<Vector2>& SvgPolyline::getPoints() const {
 RectF SvgPolyline::getBoundingBox() const {
     if (points.empty()) return RectF(0, 0, 0, 0);
 
-    float minX = points[0].x;
-    float maxX = points[0].x;
-    float minY = points[0].y;
-    float maxY = points[0].y;
+    GraphicsPath path;
 
+    std::vector<PointF> gdiPoints;
+    gdiPoints.reserve(points.size());
     for (const auto& p : points) {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
+        gdiPoints.emplace_back(p.x, p.y);
     }
 
-    return RectF(minX, minY, maxX - minX, maxY - minY);
+    if (isClosed) {
+        path.AddPolygon(gdiPoints.data(), (INT)gdiPoints.size());
+    }
+    else {
+        path.AddLines(gdiPoints.data(), (INT)gdiPoints.size());
+    }
+
+    Matrix matrix;
+    SetGdiMatrix(getTransform(), matrix);
+    path.Transform(&matrix);
+
+    RectF bounds;
+    path.GetBounds(&bounds);
+    return bounds;
 }
 
 void SvgPolyline::accept(Renderer& renderer) const {

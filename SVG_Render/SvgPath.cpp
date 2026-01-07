@@ -1,7 +1,5 @@
 ﻿#include "SvgPath.h"
-#include "framework.h"
 #include "Renderer.h"
-#include "GeometryUtils.h"
 
 // Fix for Windows min/max macro conflict
 #undef max

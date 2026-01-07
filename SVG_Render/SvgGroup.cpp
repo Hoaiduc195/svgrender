@@ -11,29 +11,35 @@ const vector<unique_ptr<SvgElement>>& SvgGroup::getElements() const {
 	return elements;
 }
 
-Gdiplus::RectF SvgGroup::getBoundingBox() const {
-    if (elements.empty()) return Gdiplus::RectF(0, 0, 0, 0);
-
-    Gdiplus::RectF unionRect;
+RectF SvgGroup::getBoundingBox() const {
+    RectF combinedBounds(0, 0, 0, 0);
     bool first = true;
 
-    for (const auto& el : elements) {
-        if (!el) continue;
+    for (const auto& element : elements) {
+        RectF childBounds = element->getBoundingBox();
 
-        Gdiplus::RectF childBox = el->getBoundingBox();
-
-        if (childBox.Width == 0 && childBox.Height == 0) continue;
+        if (childBounds.Width <= 0 && childBounds.Height <= 0) continue;
 
         if (first) {
-            unionRect = childBox;
+            combinedBounds = childBounds;
             first = false;
         }
         else {
-            Gdiplus::RectF::Union(unionRect, unionRect, childBox);
+            RectF::Union(combinedBounds, combinedBounds, childBounds);
         }
     }
 
-    return unionRect;
+    if (first) return RectF(0, 0, 0, 0);
+    GraphicsPath path;
+    path.AddRectangle(combinedBounds);
+
+    Matrix matrix;
+    SetGdiMatrix(transform, matrix);
+    path.Transform(&matrix);
+
+    RectF bounds;
+    path.GetBounds(&bounds);
+    return bounds;
 }
 void SvgGroup::accept(Renderer& renderer) const {
 	renderer.render(*this);

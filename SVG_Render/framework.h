@@ -24,10 +24,10 @@
 	#include <sstream>
 	#include <vector>
 	#include <unordered_map>
-	#include <Windows.h>
 	#include <limits>
 	using namespace Gdiplus;
 	using namespace std;
 	#pragma comment (lib, "Gdiplus.lib")
+	#include "GeometryUtils.h"
 
 

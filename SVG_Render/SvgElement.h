@@ -1,7 +1,6 @@
 #pragma once
 #include "Color.h"
 #include "Transform.h"
-#include "GeometryUtils.h"
 #include "framework.h"
 
 // Enum to determine what kind of fill this element uses

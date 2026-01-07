@@ -24,7 +24,16 @@ float SvgRect::getRy() const {
     return ry; 
 }
 RectF SvgRect::getBoundingBox() const {
-    return RectF(x, y, width, height);
+    GraphicsPath path;
+    path.AddRectangle(RectF(x, y, width, height));
+
+    Matrix matrix;
+    SetGdiMatrix(getTransform(), matrix);
+    path.Transform(&matrix);
+
+    RectF bounds;
+    path.GetBounds(&bounds);
+    return bounds;
 }
 
 void SvgRect::accept(Renderer& renderer) const {
